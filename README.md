@@ -1,37 +1,46 @@
-# Project Title
+# Transportation Routing
 
-Simple overview of use/purpose.
+A repository for tools, documentation, and code related to transportation routing with Overture Maps Foundation data.
 
 ## Description
 
-An in-depth paragraph about your project and overview of use.
+This repository serves as a workspace for developing tools and documentation that help translate Overture Transportation Schema to existing routing engine formats. Currently, we're focusing on integrating with Valhalla routing engine. This is a space to collect code, notebooks, and thoughts until we find better places for them. The repository includes a book on Valhalla's Mjolnir graph tile builder to help understand how to integrate Overture data with Valhalla's routing capabilities.
 
 ## Getting Started
 
 ### Dependencies
 
-* Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-* ex. Windows 10
+* Valhalla routing engine
+* Overture Maps Foundation data
+* mdBook (for building and viewing the documentation books)
+* Rust toolchain (for running code examples)
 
 ### Installing
 
-* How/where to download your program
-* Any modifications needed to be made to files/folders
+* Clone this repository
+* Follow the installation instructions for each specific tool or example in their respective directories
+* For viewing the books, install mdBook: `cargo install mdbook`
 
 ### Executing program
 
-* How to run the program
-* Step-by-step bullets
+* To build and view the Valhalla Mjolnir book:
 ```
-code blocks for commands
+cd docs/books/valhalla-mjolnir
+mdbook build
+mdbook serve
 ```
+* Open your browser to http://localhost:3000 to view the book
 
-## Help
+## Tasks
 
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
+* Develop tools to convert Overture Transportation Schema to Valhalla's input format
+* Create documentation on the conversion process and data mapping
+* Build example notebooks demonstrating the integration workflow
+* Implement validation tools to ensure data quality during conversion
+* Develop visualization tools to inspect routing results
+* Create test cases with sample Overture data
+* Document performance considerations and optimization techniques
+* Explore integration with other routing engines beyond Valhalla
 
 ## Authors
 

@@ -1,0 +1,138 @@
+@page {
+    size: letter;
+    margin: 0.5in;
+    @bottom-center {
+        content: counter(page);
+    }
+}
+
+body {
+    /* Reduced base font size to 6pt */
+    font-size: 6pt;
+    /* Further reduced line spacing */
+    line-height: 1;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /* Ensure text is black */
+    color: #000000;
+}
+
+/* Remove forced page breaks after chapters */
+.page-break {
+    page-break-before: auto;
+}
+
+/* Scaled down header sizes */
+h1 {
+    font-size: 10pt;
+    margin-top: 0.7em;
+    margin-bottom: 0.2em;
+    page-break-after: avoid;
+    color: #000000;
+}
+
+h2 {
+    font-size: 8pt;
+    margin-top: 0.6em;
+    margin-bottom: 0.2em;
+    page-break-after: avoid;
+    color: #000000;
+}
+
+h3 {
+    font-size: 7pt;
+    margin-top: 0.5em;
+    margin-bottom: 0.1em;
+    page-break-after: avoid;
+    color: #000000;
+}
+
+h4, h5, h6 {
+    font-size: 6pt;
+    margin-top: 0.4em;
+    margin-bottom: 0.1em;
+    page-break-after: avoid;
+    color: #000000;
+}
+
+/* Extremely compact spacing for lists */
+ul, ol {
+    margin-top: 0.1em;
+    margin-bottom: 0.1em;
+    padding-left: 1.2em;
+}
+
+li {
+    margin: 0;
+    padding: 0;
+}
+
+/* Minimal spacing for paragraphs */
+p {
+    margin-top: 0.1em;
+    margin-bottom: 0.1em;
+}
+
+/* Keep code blocks together and compact */
+pre {
+    page-break-inside: avoid;
+    margin: 0.2em 0;
+    padding: 0.2em;
+    font-size: 5pt;
+    line-height: 1;
+    color: #000000;
+}
+
+code {
+    font-size: 5pt;
+    color: #000000;
+}
+
+/* Compact tables */
+table {
+    width: 100%;
+    margin: 0.3em 0;
+    border-collapse: collapse;
+    page-break-inside: avoid;
+    font-size: 5pt;
+    color: #000000;
+}
+
+th, td {
+    padding: 0.1em 0.2em;
+    color: #000000;
+}
+
+/* Optimize images */
+img {
+    max-width: 100%;
+    height: auto;
+    margin: 0.3em 0;
+}
+
+/* Remove extra space between sections */
+section {
+    margin: 0;
+    padding: 0;
+}
+
+/* Ensure all text is black */
+* {
+    color: #000000;
+}
+
+/* Reduce space after headings */
+h1 + *, h2 + *, h3 + *, h4 + *, h5 + *, h6 + * {
+    margin-top: 0;
+}
+
+/* Tighten blockquotes */
+blockquote {
+    margin: 0.2em 0;
+    padding: 0.1em 0.3em;
+    border-left: 2px solid #ddd;
+}
+
+/* Reduce space around horizontal rules */
+hr {
+    margin: 0.2em 0;
+}
