@@ -1,0 +1,31 @@
+[book]
+title = "Understanding Valhalla's Mjolnir: The Graph Tile Builder"
+authors = ["Swagata Prateek", "Overture Maps Foundation Contributors"]
+description = "A comprehensive guide to Valhalla's Mjolnir graph tile building system"
+language = "en"
+multilingual = false
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/OvertureMaps/transportation-routing"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/OvertureMaps/transportation-routing/edit/main/docs/books/valhalla-mjolnir/{path}"
+additional-css = ["mermaid.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html.playground]
+editable = true
+line-numbers = true
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 2

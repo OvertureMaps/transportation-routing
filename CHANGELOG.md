@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
 ## [Unreleased]
+### Added
+- Initialize Valhalla Mjolnir documentation book structure
+- Add book chapters on Valhalla's graph tile building system
+
 ### Changed
 - Update and improvement of Polish translation from .
 ## [0.0.2] - 2014-06-09
