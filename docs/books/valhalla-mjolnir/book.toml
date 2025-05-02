@@ -1,7 +1,7 @@
 [book]
-title = "Understanding Valhalla's Mjolnir: The Graph Tile Builder"
+title = "Building Overture Graph Tiles: Understanding Valhalla's Mjolnir and Beyond"
 authors = ["Swagata Prateek", "Overture Maps Foundation Contributors"]
-description = "A comprehensive guide to Valhalla's Mjolnir graph tile building system"
+description = "A comprehensive guide to building graph tiles for routing with Overture Maps data"
 language = "en"
 multilingual = false
 src = "src"

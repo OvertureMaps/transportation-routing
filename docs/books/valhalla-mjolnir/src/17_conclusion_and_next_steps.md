@@ -1,233 +1,142 @@
 # Conclusion and Next Steps
 
-## Summary of Mjolnir's Graph Tile Building Process
+## Our Journey So Far
 
-Throughout this book, we've explored the inner workings of Valhalla's Mjolnir component, which is responsible for converting OpenStreetMap data into Valhalla's tiled routing graph. Let's summarize the key aspects of this process:
+Throughout this book, we've explored the fascinating world of graph tiles and routing, with a particular focus on understanding Valhalla's Mjolnir system and adapting it for use with Overture Maps Foundation data.
 
-1. **Data Parsing**: Mjolnir reads OSM data from PBF files, extracting nodes, ways, and relations.
+We began by understanding the fundamental concepts of graph tiles and their importance for efficient routing at scale. We then dove deep into Valhalla's Mjolnir component, examining how it transforms OpenStreetMap data into a sophisticated hierarchical graph structure.
 
-2. **Tag Processing**: OSM tags are processed to determine road properties, access restrictions, speed limits, and other attributes.
+With that foundation in place, we turned our attention to Overture's transportation schema and the challenges of integrating it with Valhalla. We explored different integration approaches, detailed attribute mapping strategies, and discussed performance optimizations for processing planet-scale data.
 
-3. **Graph Construction**: An initial graph is built with nodes at intersections and directed edges representing road segments.
-
-4. **Graph Enhancement**: Additional attributes are added to the graph, such as turn lanes, speed limits, and administrative information.
-
-5. **Hierarchical Graph Building**: Multiple levels of the graph are created, with higher levels containing only more important roads.
-
-6. **Tile Creation**: The graph is divided into tiles for efficient storage and retrieval.
-
-7. **Serialization**: Tiles are written to disk in a binary format optimized for quick loading.
-
-8. **Special Features**: Complex features like turn restrictions, transit integration, and elevation data are handled.
-
-9. **Performance Optimization**: Various techniques are used to efficiently process planet-scale data.
-
-## Building Your Own Graph Tile Builder
-
-If you're planning to build your own graph tile builder, consider these key aspects:
-
-### Architecture Decisions
-
-1. **Input Data Sources**: Decide which data sources your tile builder will support.
-2. **Performance Requirements**: Consider the scale of data you need to process.
-3. **Feature Support**: Determine which routing features you need to support.
-4. **Integration Points**: Plan how your tile builder will integrate with other components.
-
-### Implementation Strategy
-
-1. **Start Small**: Begin with a basic implementation that handles the core functionality.
-2. **Incremental Development**: Add features one at a time, testing thoroughly as you go.
-3. **Performance Profiling**: Identify and address performance bottlenecks early.
-4. **Validation**: Implement comprehensive validation to ensure correctness.
-
-### Key Components to Implement
-
-1. **Data Parser**: Read and process input data.
-2. **Graph Builder**: Construct the initial graph.
-3. **Tile Creator**: Divide the graph into tiles.
-4. **Serializer**: Write tiles to disk in the correct format.
-5. **Hierarchy Builder**: Create multiple levels of the graph.
-6. **Special Feature Handlers**: Implement support for turn restrictions, transit, etc.
-
-## Extending Mjolnir
-
-If you're interested in extending Mjolnir rather than building a new tile builder from scratch, consider these possibilities:
-
-### Adding New Data Sources
-
-Mjolnir currently focuses on OpenStreetMap data, but you could extend it to support other data sources:
-
-```cpp
-// Example of adding a new data source parser
-class CustomDataParser {
-public:
-  CustomDataParser(const Config& config);
-  
-  // Parse custom data
-  bool Parse(const std::vector<std::string>& input_files);
-  
-  // Get the parsed data
-  const ParsedData& GetData() const;
-  
-private:
-  // Parse different types of data
-  void ParseNodes(const InputData& data);
-  void ParseEdges(const InputData& data);
-  
-  // Store parsed data
-  ParsedData parsed_data_;
-};
+```mermaid
+flowchart LR
+    A[Understanding Graph Tiles] --> B[Exploring Valhalla's Mjolnir]
+    B --> C[Analyzing Overture's Schema]
+    C --> D[Integration Approaches]
+    D --> E[Attribute Mapping]
+    E --> F[Performance Optimization]
 ```
 
-### Adding New Features
+## Key Insights
 
-You could extend Mjolnir to support new routing features:
+Several important insights have emerged from our exploration:
 
-```cpp
-// Example of adding support for traffic data
-class TrafficBuilder {
-public:
-  TrafficBuilder(const Config& config);
-  
-  // Build traffic data
-  bool Build(const std::vector<std::string>& traffic_files);
-  
-private:
-  // Process traffic data
-  void ProcessTrafficData(const std::string& file);
-  
-  // Add traffic data to tiles
-  void AddTrafficToTiles();
-  
-  // Configuration
-  Config config_;
-};
-```
+### 1. The Power of Hierarchical Tiling
 
-### Improving Performance
+Dividing the world into a hierarchical system of tiles offers significant advantages for routing:
 
-You could optimize Mjolnir for better performance:
+- Memory efficiency through selective loading
+- Parallelization opportunities for processing
+- Scalability to planet-sized datasets
+- Support for incremental updates
 
-```cpp
-// Example of adding a more efficient spatial index
-template <typename T>
-class QuadTree {
-public:
-  QuadTree(const BoundingBox& bounds);
-  
-  // Insert an item
-  void Insert(const T& item, const Point& point);
-  
-  // Query items within a bounding box
-  std::vector<T> Query(const BoundingBox& bounds) const;
-  
-  // Nearest neighbor query
-  std::vector<T> Nearest(const Point& point, size_t count) const;
-  
-private:
-  // Internal implementation
-  struct Node;
-  std::unique_ptr<Node> root_;
-  BoundingBox bounds_;
-};
-```
+This approach, pioneered by systems like Valhalla, remains valuable for any routing system, including one built specifically for Overture data.
 
-## Future Directions
+### 2. The Value of Explicit Topology
 
-As routing technology continues to evolve, there are several exciting directions for future development:
+Overture's explicit representation of network topology through connectors offers advantages over OSM's implicit topology:
 
-### Real-Time Updates
+- Clearer understanding of network connectivity
+- More precise placement of attributes and restrictions
+- Simplified processing of complex intersections
+- Better support for multi-level structures like overpasses
 
-Implementing support for real-time updates would allow the graph to reflect current conditions:
+These advantages can be leveraged to create more accurate and efficient routing graphs.
 
-```cpp
-// Example of a real-time update system
-class RealTimeUpdater {
-public:
-  RealTimeUpdater(const Config& config);
-  
-  // Apply real-time updates
-  bool ApplyUpdates(const std::vector<Update>& updates);
-  
-private:
-  // Update a specific tile
-  bool UpdateTile(const GraphId& tile_id, const std::vector<Update>& updates);
-  
-  // Configuration
-  Config config_;
-};
-```
+### 3. The Importance of Flexible Integration
 
-### Machine Learning Integration
+No single integration approach fits all use cases. The phased strategy we've outlined—starting with binary file generation and progressing toward custom graph tiles—provides flexibility to balance immediate needs with long-term optimization.
 
-Machine learning could be used to improve various aspects of routing:
+### 4. The Challenge of Attribute Mapping
 
-```cpp
-// Example of using machine learning for speed prediction
-class MLSpeedPredictor {
-public:
-  MLSpeedPredictor(const Config& config);
-  
-  // Load the model
-  bool LoadModel(const std::string& model_file);
-  
-  // Predict speed for an edge
-  float PredictSpeed(const EdgeFeatures& features) const;
-  
-private:
-  // ML model
-  std::unique_ptr<Model> model_;
-  
-  // Configuration
-  Config config_;
-};
-```
+Translating between different attribute systems is complex but crucial for accurate routing. Our detailed mapping strategies for road classification, access restrictions, speed limits, and other attributes provide a foundation for this work.
 
-### 3D Routing
+### 5. The Necessity of Performance Optimization
 
-Supporting 3D routing would enable more accurate navigation in complex environments:
+At planet scale, performance isn't optional—it's essential. The optimization strategies we've discussed, from memory-efficient data structures to parallel processing to incremental updates, are critical for building a practical system.
 
-```cpp
-// Example of 3D routing support
-class ThreeDBuilder {
-public:
-  ThreeDBuilder(const Config& config);
-  
-  // Build 3D data
-  bool Build(const std::vector<std::string>& input_files);
-  
-private:
-  // Process 3D data
-  void Process3DData(const std::string& file);
-  
-  // Add 3D data to tiles
-  void Add3DToTiles();
-  
-  // Configuration
-  Config config_;
-};
-```
+## Next Steps
+
+While we've covered a lot of ground, there's still much to explore and build. Here are some promising directions for future work:
+
+### 1. Implementation of the Phase 1 Transcoder
+
+The most immediate next step is to implement the Phase 1 approach we've outlined:
+
+- Create a Rust-based transcoder that converts Overture data to Valhalla's binary formats
+- Implement the attribute mapping strategies we've discussed
+- Develop integration scripts for the complete pipeline
+- Test with real-world Overture data
+
+This will provide a working solution for routing with Overture data while we explore more advanced approaches.
+
+### 2. Research on Direct Integration
+
+In parallel with the Phase 1 implementation, research on more direct integration with Valhalla would be valuable:
+
+- Explore modifications to Valhalla's `GraphBuilder` to work directly with Overture data
+- Benchmark different integration approaches for performance
+- Identify opportunities for optimization based on Overture's data model
+
+This research will inform the development of Phase 2 and beyond.
+
+### 3. Design of Overture Graph Tiles
+
+Looking further ahead, designing a custom graph tile format specifically for Overture data is an exciting prospect:
+
+- Define the tile structure and hierarchy
+- Design efficient serialization formats
+- Create tools for building and querying these tiles
+- Develop converters for various routing engines
+
+This work could eventually lead to a reference implementation of Overture Graph Tiles that becomes a standard for the community.
+
+### 4. Exploration of Advanced Features
+
+There are many advanced features that could enhance routing with Overture data:
+
+- Time-dependent routing with traffic data
+- Multimodal routing with transit integration
+- Specialized routing for different vehicle types
+- Support for 3D routing in multi-level structures
+
+These features could be developed as extensions to the core system.
+
+### 5. Community Engagement
+
+Finally, engaging with the broader community is essential for the success of this work:
+
+- Share findings and code with the Overture Maps Foundation community
+- Collaborate with Valhalla developers on integration approaches
+- Gather feedback from users and developers
+- Contribute improvements back to upstream projects
+
+Open collaboration will ensure that the benefits of this work are widely shared.
 
 ## Final Thoughts
 
-Building a graph tile builder is a complex but rewarding task. By understanding how Mjolnir works, you can create your own implementation that meets your specific needs while remaining compatible with Valhalla's routing engine.
+Building routing systems with Overture data represents an exciting frontier in geospatial technology. The combination of Overture's rich, standardized data with sophisticated routing techniques offers the potential for more accurate, efficient, and flexible routing solutions.
 
-Remember that the key to a successful implementation is a deep understanding of the tile format, careful attention to detail in the graph building process, and thorough testing to ensure correctness and performance.
+By understanding both the existing tools like Valhalla's Mjolnir and the unique characteristics of Overture data, we can create systems that leverage the best of both worlds. The approaches and strategies outlined in this book provide a roadmap for this journey.
 
-Whether you choose to build your own graph tile builder from scratch or extend Mjolnir, the insights from this book should provide a solid foundation for your work.
+Whether you're implementing a simple integration with existing routing engines or designing a custom solution from the ground up, we hope this book has provided valuable insights and practical guidance. The future of routing with Overture data is bright, and we're excited to see what you'll build!
 
-## Resources for Further Learning
+```mermaid
+flowchart TD
+    A[Overture Data] --> B[Phase 1: Binary File Generation]
+    A --> C[Phase 2: Direct Integration]
+    A --> D[Phase 3: Custom Graph Tiles]
+    
+    B --> E[Immediate Value]
+    C --> F[Enhanced Performance]
+    D --> G[Optimized Solution]
+    
+    E --> H[Future of Routing]
+    F --> H
+    G --> H
+    
+    style A fill:#f96,stroke:#333,stroke-width:2px
+    style H fill:#bbf,stroke:#333,stroke-width:2px
+```
 
-To deepen your understanding of graph tile building and routing, consider these resources:
-
-1. **Valhalla Documentation**: The official documentation at [valhalla.github.io/valhalla](https://valhalla.github.io/valhalla) provides detailed information about Valhalla's components and APIs.
-
-2. **OpenStreetMap Wiki**: The [OSM Wiki](https://wiki.openstreetmap.org) contains valuable information about OSM data and tagging conventions.
-
-3. **Routing Algorithms**: Books like "Algorithm Design Manual" by Steven Skiena and "Introduction to Algorithms" by Cormen, Leiserson, Rivest, and Stein cover the fundamental algorithms used in routing.
-
-4. **Spatial Indexing**: Papers on R-trees, quad trees, and other spatial indexing structures provide insights into efficient spatial queries.
-
-5. **Performance Optimization**: Resources on C++ performance optimization, memory management, and parallel processing can help you build an efficient tile builder.
-
-By combining the knowledge from this book with these additional resources, you'll be well-equipped to build a high-quality graph tile builder for routing applications.
+Thank you for joining us on this exploration of building Overture Graph Tiles. The journey continues, and we look forward to seeing the innovative solutions that emerge from this foundation.

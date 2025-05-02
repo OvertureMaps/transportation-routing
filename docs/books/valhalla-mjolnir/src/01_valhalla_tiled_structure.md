@@ -1,140 +1,206 @@
-# Valhalla's Tiled Structure
+# Understanding Graph Tiles
 
-## The Concept of Graph Tiles
+## The Power of Tiled Routing Graphs
 
-At the heart of Valhalla's routing engine is its tiled graph structure. Unlike some other routing engines that load the entire graph into memory, Valhalla divides the world into a hierarchical system of tiles. This approach offers several advantages:
+Imagine trying to find the best route from New York to Los Angeles. If you were to load the entire road network of the United States into memory at once, you'd need to process millions of road segments and intersections—far more than necessary for a single route calculation. This is where the concept of graph tiles becomes transformative.
 
-1. **Memory Efficiency**: Only the tiles needed for a specific route calculation need to be loaded into memory
-2. **Scalability**: The system can handle planet-scale data while maintaining reasonable memory usage
-3. **Partial Updates**: Individual tiles can be updated without rebuilding the entire graph
-4. **Regional Extracts**: Work with data for specific regions only
+Graph tiles divide the world into manageable geographic chunks, each containing a portion of the road network. When calculating a route, only the tiles that intersect with potential paths need to be loaded into memory. This approach dramatically reduces memory usage and improves performance, especially for long-distance routes.
 
-## Tile Hierarchy and Levels
+```mermaid
+flowchart TD
+    subgraph "Traditional Approach"
+        A1[Entire Network in Memory]
+        A2[High Memory Usage]
+        A3[Slow Loading]
+        A1 --> A2 --> A3
+    end
+    
+    subgraph "Tiled Approach"
+        B1[Load Only Relevant Tiles]
+        B2[Efficient Memory Usage]
+        B3[Fast Loading]
+        B1 --> B2 --> B3
+    end
+```
 
-Valhalla organizes its routing graph into multiple hierarchical levels, each representing different types of roads:
+## Valhalla's Hierarchical Tile System
 
-- **Level 0**: Local roads and paths (highest detail)
-- **Level 1**: Regional roads
-- **Level 2**: Major highways and arterials (lowest detail)
+Valhalla takes the tiled approach a step further by implementing a hierarchical system. This mimics how humans naturally navigate: we use local streets near our origin and destination, but prefer highways for the middle portion of longer journeys.
 
-This hierarchy mimics how humans navigate: using local streets near origin and destination, but preferring major roads for the middle portion of longer journeys.
+### The Three-Level Hierarchy
 
-The tiles are split up into these three levels or hierarchies as follows:
-- Level 0 contains edges for highway roads (motorway, trunk, and primary) stored in 4-degree tiles
-- Level 1 contains arterial roads (secondary and tertiary) saved in 1-degree tiles
-- Level 2 contains local roads (unclassified, residential, service, etc.) saved in 0.25-degree tiles
+Valhalla organizes its routing graph into three distinct levels:
 
-This hierarchical structure allows the routing algorithm to quickly traverse long distances by using higher-level tiles, then switch to more detailed tiles as it approaches the origin and destination.
+1. **Highway Level (Level 0)**: Contains major highways and connections
+   - Covers large areas (approximately 4° × 4° tiles)
+   - Used for long-distance routing
+   - Includes motorways, trunks, and primary roads
 
-## Tile Coordinate System
+2. **Arterial Level (Level 1)**: Contains regional and connecting roads
+   - Medium-sized tiles (approximately 1° × 1° tiles)
+   - Used for medium-distance routing
+   - Includes secondary and tertiary roads
 
-Valhalla uses a custom tile coordinate system based on the following components:
+3. **Local Level (Level 2)**: Contains detailed local networks
+   - Small tiles (approximately 0.25° × 0.25° tiles)
+   - Used for short-distance routing and first/last mile
+   - Includes residential, service, and other minor roads
+
+This hierarchical structure allows the routing algorithm to quickly traverse long distances using higher-level tiles, then switch to more detailed tiles as it approaches the origin and destination.
+
+```mermaid
+graph TD
+    subgraph "Level 0 (Highway)"
+        H1[Large Tiles]
+        H2[Major Highways]
+        H3[Long Distance]
+    end
+    
+    subgraph "Level 1 (Arterial)"
+        A1[Medium Tiles]
+        A2[Regional Roads]
+        A3[Medium Distance]
+    end
+    
+    subgraph "Level 2 (Local)"
+        L1[Small Tiles]
+        L2[Local Streets]
+        L3[Short Distance]
+    end
+    
+    H3 --> A3 --> L3
+```
+
+### Tile Identification and Coordinates
+
+Each tile in Valhalla is uniquely identified by a combination of:
+
+- **Level**: The hierarchy level (0, 1, or 2)
+- **Tile ID**: A unique identifier within the level
+
+The tile ID is derived from geographic coordinates using a space-filling curve algorithm, which ensures that nearby locations are likely to be in the same tile or adjacent tiles. This spatial locality is crucial for efficient routing.
+
+In Valhalla's codebase, this is represented by the `GraphId` structure:
 
 ```cpp
-// From baldr/graphid.h
 struct GraphId {
   uint64_t value;
   
   // Methods to access specific parts of the ID
-  uint32_t tileid() const;
-  uint32_t level() const;
-  uint32_t id() const;
-  
-  // ...
+  uint32_t tileid() const;  // Returns the tile ID
+  uint32_t level() const;   // Returns the hierarchy level
+  uint32_t id() const;      // Returns the element ID within the tile
 };
 ```
 
-Each `GraphId` contains:
-- **Level**: The hierarchy level (0, 1, or 2)
-- **Tile ID**: Identifies a specific tile within the level
-- **ID**: Identifies a specific element (node or edge) within the tile
+The world is divided into a grid based on these tile sizes, with rows and columns starting from the bottom left (-180°, -90°) and increasing to the top right (180°, 90°).
 
-The tile ID is derived from the geographic coordinates using a space-filling curve algorithm, which ensures that nearby locations are likely to be in the same tile or adjacent tiles.
+## Inside a Graph Tile
 
-## Tile Size and Resolution
+Each graph tile is a self-contained unit that stores a portion of the routing graph. Let's explore what's inside:
 
-The size of tiles varies by level:
+### Tile Header
 
-- Level 0 tiles are the largest, covering approximately 4 degrees × 4 degrees
-- Level 1 tiles cover 1 degree × 1 degree
-- Level 2 tiles are the smallest, covering 0.25 degrees × 0.25 degrees
+The header contains metadata about the tile, including:
 
-This variable resolution allows for efficient storage and retrieval of road network data at different scales. The world is divided into a grid based on these tile sizes, with rows and columns starting from the bottom left (-180, -90) and increasing to the top right (180, 90).
+- Tile ID and level
+- Creation date
+- Counts of nodes, edges, and other elements
+- Bounding box coordinates
+- Version information
 
-## Code Example: Tile Coordinates Calculation
+This metadata helps the routing engine quickly determine if a tile is relevant for a particular query and if it's compatible with the current software version.
 
-Here's how Valhalla converts geographic coordinates to tile coordinates:
+### Nodes
 
-```cpp
-// From midgard/tiles.h
-class Tiles {
-public:
-  /**
-   * Get the tile ID given the latitude and longitude.
-   * @param lat Latitude value.
-   * @param lng Longitude value.
-   * @return Returns the tile ID.
-   */
-  int32_t TileId(const float lat, const float lng) const;
-  
-  // ...
-};
-```
+Nodes represent intersections in the road network. Each node contains:
 
-The implementation uses a projection system to map geographic coordinates to tile IDs:
+- Geographic coordinates (latitude and longitude)
+- List of outgoing edges
+- Traffic signal information
+- Administrative region references
+- Elevation (if available)
 
-```cpp
-// From midgard/tiles.cc
-int32_t Tiles::TileId(const float lat, const float lng) const {
-  // Get the indexes within the tiles and return the tile ID
-  const int32_t x = static_cast<int32_t>(floor((lng - tilebounds_.minx()) * inv_tile_size_));
-  const int32_t y = static_cast<int32_t>(floor((lat - tilebounds_.miny()) * inv_tile_size_));
-  return (y * ncolumns_) + x;
-}
-```
+Nodes are the connection points between road segments and play a crucial role in path finding.
 
-## Tile Storage Format
+### Directed Edges
 
-Valhalla stores tiles as binary files on disk. Each tile contains:
+Edges represent road segments with direction-specific attributes. Each directed edge contains:
 
-1. **Header**: Contains metadata about the tile
-2. **Nodes**: Represent intersections in the road network
-3. **Directed Edges**: Represent road segments with direction-specific attributes
-4. **Edge Info**: Contains shared data for edges (e.g., shape, names)
-5. **Additional Data**: Restrictions, traffic signs, admin information, etc.
+- References to start and end nodes
+- Length and travel time
+- Road classification
+- Access restrictions (e.g., no pedestrians, no trucks)
+- Speed limit
+- References to names and other shared data
+- Connectivity information (transitions to other tiles or hierarchy levels)
 
-The binary format is designed for efficient storage and quick loading. Here's the structure of a tile header:
+Edges are directed, meaning that a two-way street is represented by two separate edges, one in each direction. This allows for modeling direction-specific attributes like one-way restrictions or different speed limits.
 
-```cpp
-// From baldr/graphtileheader.h
-class GraphTileHeader {
-public:
-  // ...
-  
-  uint32_t graphid_;                 // Tile ID within the hierarchy
-  uint32_t date_created_;            // Date created
-  uint32_t node_count_;              // Number of nodes
-  uint32_t directed_edge_count_;     // Number of directed edges
-  // ... many more fields ...
-};
-```
+### Edge Information
 
-The tiles are stored on disk with a directory structure that reflects their hierarchy level and ID. For example, a tile with ID 756425 at level 2 would be stored at `/2/000/756/425.gph`.
+To save space, information that's shared between edges (like road names or shape points) is stored separately:
+
+- Road names in multiple languages
+- Shape points (the geometric representation of the road)
+- Exit signs and route numbers
+- Bike network information
+
+This approach significantly reduces the size of the tiles by avoiding duplication of common data.
+
+### Additional Data
+
+Graph tiles also contain specialized data structures for:
+
+- Turn restrictions (prohibited turns)
+- Traffic signs and signals
+- Lane information
+- Administrative boundaries
+- Time-dependent restrictions
+- Transit schedules (for multimodal routing)
+
+These additional data structures enable advanced routing features beyond simple shortest-path calculations.
 
 ## Tile Connectivity
 
-Tiles connect to adjacent tiles through "transition" edges and nodes. These special connections allow routes to seamlessly cross tile boundaries. Additionally, connections between hierarchy levels are maintained through "transition up/down" edges, which allow routes to move between local, regional, and highway networks.
+One of the challenges with a tiled approach is handling routes that cross tile boundaries. Valhalla solves this with two types of special connections:
+
+### Tile Transitions
+
+When a road crosses from one tile to another at the same hierarchy level, Valhalla creates "transition" edges and nodes. These special connections allow routes to seamlessly cross tile boundaries without any disruption to the routing algorithm.
+
+### Hierarchy Transitions
+
+To move between hierarchy levels (e.g., from a highway to local streets), Valhalla uses "transition up/down" edges. These connect nodes that exist in multiple hierarchy levels, allowing routes to efficiently switch between different road types as needed.
+
+```mermaid
+graph TD
+    subgraph "Level 0"
+        H1[Highway Node] --- H2[Highway Node]
+    end
+    
+    subgraph "Level 1"
+        A1[Arterial Node] --- A2[Arterial Node]
+    end
+    
+    subgraph "Level 2"
+        L1[Local Node] --- L2[Local Node]
+    end
+    
+    H1 -.-> A1
+    A1 -.-> L1
+    
+    style H1 fill:#f96,stroke:#333
+    style A1 fill:#f96,stroke:#333
+    style L1 fill:#f96,stroke:#333
+```
 
 ## Memory Management
 
-Valhalla uses a tile cache to manage memory usage:
+Valhalla uses a sophisticated tile cache to manage memory usage:
 
 ```cpp
-// From baldr/graphreader.h
 class GraphReader {
-public:
-  // ...
-  
 private:
   std::shared_ptr<GraphMemory> memory_;
   CacheLRU<GraphId, GraphTilePtr> cache_;
@@ -144,4 +210,14 @@ private:
 
 This cache uses a least-recently-used (LRU) strategy to keep frequently accessed tiles in memory while allowing less-used tiles to be evicted when memory pressure increases. This approach is particularly important for mobile or embedded applications where memory resources may be limited.
 
-Understanding this tiled structure is fundamental to building a graph tile builder, as it defines how the final output should be organized and stored.
+## Why This Matters for Overture
+
+Understanding Valhalla's tiled structure is crucial for our work with Overture data because:
+
+1. **Integration Target**: If we want to use Valhalla as a routing engine for Overture data, we need to transform our data into this tiled format.
+
+2. **Design Inspiration**: Even if we create our own custom graph tile format for Overture, many of the principles from Valhalla's design (hierarchy, connectivity, memory management) will be valuable.
+
+3. **Performance Considerations**: The tiled approach has significant performance implications that should inform our data processing pipeline design.
+
+In the next chapters, we'll explore how Valhalla's Mjolnir component transforms raw map data into this sophisticated tiled structure, and how we can adapt these techniques for Overture data.

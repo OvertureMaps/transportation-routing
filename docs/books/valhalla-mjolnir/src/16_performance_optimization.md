@@ -2,656 +2,456 @@
 
 ## The Importance of Performance
 
-Building graph tiles for planet-scale data is computationally intensive. This chapter explores the performance optimization techniques used in Mjolnir to efficiently process large datasets.
+When working with planet-scale transportation data, performance is not just a nice-to-have—it's essential. Processing billions of road segments and intersections requires careful attention to efficiency in both time and memory usage.
 
-## Memory Management
+In this chapter, we'll explore strategies for optimizing the performance of our Overture graph tile building process, drawing on lessons from Valhalla's Mjolnir and adding Overture-specific optimizations.
 
-Efficient memory management is crucial for processing large datasets:
+## Understanding the Performance Challenges
 
-### Memory-Mapped Files
+Building graph tiles from Overture data presents several performance challenges:
 
-Mjolnir uses memory-mapped files for efficient access to large datasets:
+### Data Volume
 
-```cpp
-// From src/mjolnir/pbfgraphparser.cc
-void PBFGraphParser::Parse(const std::string& filename) {
-  // Memory map the file
-  boost::iostreams::mapped_file_source file;
-  file.open(filename);
-  
-  if (!file.is_open()) {
-    throw std::runtime_error("Failed to open file: " + filename);
-  }
-  
-  // Process the data in chunks
-  const char* data = file.data();
-  const size_t size = file.size();
-  
-  // ... process data ...
-  
-  // File is automatically unmapped when file goes out of scope
-}
-```
+Overture's global transportation data can be massive, potentially including:
 
-### Custom Memory Pools
+- Hundreds of millions of road segments
+- Billions of shape points
+- Complex relationships and attributes
 
-For allocating many small objects efficiently, Mjolnir uses custom memory pools:
+Processing this volume of data requires efficient algorithms and data structures.
 
-```cpp
-// From midgard/memorypool.h
-template <typename T>
-class MemoryPool {
-public:
-  MemoryPool(size_t block_size = 1024);
-  ~MemoryPool();
-  
-  // Allocate an object
-  T* Allocate();
-  
-  // Free an object
-  void Free(T* ptr);
-  
-private:
-  // Allocate a new block
-  void AllocateBlock();
-  
-  // List of allocated blocks
-  std::vector<T*> blocks_;
-  
-  // Free list
-  T* free_list_;
-  
-  // Block size
-  size_t block_size_;
-};
-```
+### Memory Constraints
 
-The implementation allocates memory in large blocks and manages a free list:
+Even on powerful servers, memory is finite. Loading the entire dataset into memory at once is often impractical, requiring streaming or chunked processing approaches.
 
-```cpp
-// From midgard/memorypool.h
-template <typename T>
-T* MemoryPool<T>::Allocate() {
-  // If the free list is empty, allocate a new block
-  if (free_list_ == nullptr) {
-    AllocateBlock();
-  }
-  
-  // Get an object from the free list
-  T* result = free_list_;
-  free_list_ = *reinterpret_cast<T**>(free_list_);
-  
-  // Construct the object
-  new (result) T();
-  
-  return result;
-}
+### Processing Complexity
 
-template <typename T>
-void MemoryPool<T>::Free(T* ptr) {
-  // Destruct the object
-  ptr->~T();
-  
-  // Add to the free list
-  *reinterpret_cast<T**>(ptr) = free_list_;
-  free_list_ = ptr;
-}
+Many operations in graph tile building are computationally intensive:
 
-template <typename T>
-void MemoryPool<T>::AllocateBlock() {
-  // Allocate a new block
-  T* block = static_cast<T*>(::operator new(sizeof(T) * block_size_));
-  blocks_.push_back(block);
-  
-  // Initialize the free list
-  free_list_ = block;
-  
-  // Link the objects in the free list
-  for (size_t i = 0; i < block_size_ - 1; i++) {
-    *reinterpret_cast<T**>(block + i) = block + i + 1;
-  }
-  
-  // Terminate the free list
-  *reinterpret_cast<T**>(block + block_size_ - 1) = nullptr;
-}
-```
+- Geometric calculations for node placement
+- Topological analysis for connectivity
+- Hierarchical graph construction
+- Spatial indexing and tile assignment
+
+### Parallelization Potential
+
+Many aspects of tile building can be parallelized, but this introduces complexity in coordination and data sharing.
+
+## Memory-Efficient Data Processing
 
 ### Streaming Processing
 
-To avoid loading the entire dataset into memory, Mjolnir processes data in a streaming fashion:
+Rather than loading the entire dataset into memory, process it in a streaming fashion:
 
-```cpp
-// From src/mjolnir/pbfgraphparser.cc
-void PBFGraphParser::Parse(const std::vector<std::string>& input_files) {
-  // For each input file
-  for (const auto& file : input_files) {
-    // Open the file
-    std::ifstream input(file, std::ios::binary);
+```mermaid
+flowchart LR
+    A[Data Source] --> B[Read Chunk]
+    B --> C[Process Chunk]
+    C --> D[Write Results]
+    D --> B
+```
+
+This approach maintains a bounded memory footprint regardless of input size.
+
+### Example: Streaming GeoParquet Reading
+
+```rust
+fn process_overture_data<R: Read>(reader: R) -> Result<(), Error> {
+    let mut reader = GeoParquetReader::new(reader);
     
-    // Process the file in chunks
-    const size_t chunk_size = 1024 * 1024;  // 1 MB
-    std::vector<char> buffer(chunk_size);
-    
-    while (input) {
-      // Read a chunk
-      input.read(buffer.data(), chunk_size);
-      size_t bytes_read = input.gcount();
-      
-      if (bytes_read == 0) {
-        break;
-      }
-      
-      // Process the chunk
-      ProcessChunk(buffer.data(), bytes_read);
+    while let Some(batch) = reader.next_batch(1000)? {
+        for feature in batch {
+            process_feature(feature)?;
+        }
     }
-  }
+    
+    Ok(())
+}
+```
+
+### Compact Data Structures
+
+Use memory-efficient data structures to represent entities during processing:
+
+- Use appropriate integer sizes (u32 vs u64)
+- Avoid unnecessary string duplication
+- Use bit fields for flags
+- Consider custom memory layouts for hot paths
+
+### Example: Compact Segment Representation
+
+```rust
+struct CompactSegment {
+    id: u64,                // 8 bytes
+    start_node: u32,        // 4 bytes
+    end_node: u32,          // 4 bytes
+    road_class: u8,         // 1 byte
+    access: u16,            // 2 bytes
+    speed: u8,              // 1 byte
+    flags: u8,              // 1 byte (one-way, bridge, tunnel, etc.)
+    shape_index: u32,       // 4 bytes (index into separate shape storage)
+    name_index: u32,        // 4 bytes (index into separate name storage)
+}
+// Total: 29 bytes per segment
+```
+
+### String Deduplication
+
+Transportation data often contains many duplicate strings (road names, references, etc.). Deduplicating these can save significant memory:
+
+```rust
+struct StringTable {
+    strings: Vec<String>,
+    index: HashMap<String, u32>,
+}
+
+impl StringTable {
+    fn get_or_insert(&mut self, s: &str) -> u32 {
+        if let Some(&idx) = self.index.get(s) {
+            return idx;
+        }
+        
+        let idx = self.strings.len() as u32;
+        self.strings.push(s.to_string());
+        self.index.insert(s.to_string(), idx);
+        idx
+    }
 }
 ```
 
 ## Parallel Processing
 
-Mjolnir uses parallel processing to take advantage of multiple CPU cores:
+### Tile-Based Parallelism
 
-### Thread Pools
+One of the advantages of a tiled approach is that many tiles can be processed independently:
 
-A thread pool is used to execute tasks in parallel:
-
-```cpp
-// From midgard/threadpool.h
-class ThreadPool {
-public:
-  ThreadPool(size_t num_threads = std::thread::hardware_concurrency());
-  ~ThreadPool();
-  
-  // Add a task to the pool
-  template<typename F, typename... Args>
-  auto Enqueue(F&& f, Args&&... args) -> std::future<decltype(f(args...))>;
-  
-private:
-  // Worker threads
-  std::vector<std::thread> workers_;
-  
-  // Task queue
-  std::queue<std::function<void()>> tasks_;
-  
-  // Synchronization
-  std::mutex queue_mutex_;
-  std::condition_variable condition_;
-  bool stop_;
-};
+```mermaid
+flowchart TD
+    A[Input Data] --> B[Tile Partitioning]
+    B --> C1[Process Tile 1]
+    B --> C2[Process Tile 2]
+    B --> C3[Process Tile 3]
+    B --> C4[Process Tile N]
+    C1 --> D[Merge Results]
+    C2 --> D
+    C3 --> D
+    C4 --> D
 ```
 
-The implementation creates a pool of worker threads that process tasks from a queue:
+### Example: Parallel Tile Processing
 
-```cpp
-// From midgard/threadpool.h
-ThreadPool::ThreadPool(size_t num_threads) : stop_(false) {
-  for (size_t i = 0; i < num_threads; i++) {
-    workers_.emplace_back([this] {
-      while (true) {
-        std::function<void()> task;
-        
-        {
-          std::unique_lock<std::mutex> lock(queue_mutex_);
-          condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
-          
-          if (stop_ && tasks_.empty()) {
-            return;
-          }
-          
-          task = std::move(tasks_.front());
-          tasks_.pop();
-        }
-        
-        task();
-      }
-    });
-  }
+```rust
+use rayon::prelude::*;
+
+fn process_tiles_in_parallel(tiles: Vec<TileData>) -> Vec<ProcessedTile> {
+    tiles.into_par_iter()
+        .map(|tile| process_tile(tile))
+        .collect()
 }
+```
 
-template<typename F, typename... Args>
-auto ThreadPool::Enqueue(F&& f, Args&&... args) -> std::future<decltype(f(args...))> {
-  using return_type = decltype(f(args...));
-  
-  auto task = std::make_shared<std::packaged_task<return_type()>>(
-    std::bind(std::forward<F>(f), std::forward<Args>(args)...)
-  );
-  
-  std::future<return_type> result = task->get_future();
-  
-  {
-    std::unique_lock<std::mutex> lock(queue_mutex_);
+### Handling Tile Boundaries
+
+When processing tiles in parallel, special care is needed for entities that cross tile boundaries:
+
+1. **Pre-processing**: Identify entities that span multiple tiles
+2. **Duplication**: Include these entities in all relevant tiles
+3. **Reconciliation**: Ensure consistent IDs and attributes across tiles
+4. **Edge Connection**: Create proper connections between tiles
+
+### Pipeline Parallelism
+
+Different stages of the processing pipeline can also be parallelized:
+
+```mermaid
+flowchart LR
+    A[Read Data] --> B[Parse Features]
+    B --> C[Build Graph]
+    C --> D[Create Tiles]
+    D --> E[Write Output]
     
-    if (stop_) {
-      throw std::runtime_error("Enqueue on stopped ThreadPool");
-    }
+    subgraph "Thread 1"
+        A1[Batch 1] --> B1 --> C1 --> D1 --> E1
+    end
     
-    tasks_.emplace([task]() { (*task)(); });
-  }
-  
-  condition_.notify_one();
-  return result;
-}
-```
-
-### Parallel Tile Processing
-
-Tiles can be processed in parallel since they're largely independent:
-
-```cpp
-// From src/mjolnir/graphbuilder.cc
-void GraphBuilder::BuildTiles() {
-  // Get the list of tiles to build
-  std::vector<GraphId> tile_ids = GetTileList();
-  
-  // Create a thread pool
-  ThreadPool pool;
-  
-  // Process tiles in parallel
-  std::vector<std::future<void>> results;
-  for (const auto& tile_id : tile_ids) {
-    results.emplace_back(pool.Enqueue([this, tile_id]() {
-      BuildTile(tile_id);
-    }));
-  }
-  
-  // Wait for all tiles to be processed
-  for (auto& result : results) {
-    result.get();
-  }
-}
-```
-
-### OpenMP Integration
-
-For simpler parallel processing, Mjolnir uses OpenMP:
-
-```cpp
-// From src/mjolnir/graphenhancer.cc
-void GraphEnhancer::Enhance() {
-  // Get the list of tiles to enhance
-  std::vector<GraphId> tile_ids = GetTileList();
-  
-  // Process tiles in parallel using OpenMP
-  #pragma omp parallel for
-  for (size_t i = 0; i < tile_ids.size(); i++) {
-    EnhanceTile(tile_ids[i]);
-  }
-}
+    subgraph "Thread 2"
+        A2[Batch 2] --> B2 --> C2 --> D2 --> E2
+    end
+    
+    subgraph "Thread N"
+        AN[Batch N] --> BN --> CN --> DN --> EN
+    end
 ```
 
 ## Algorithmic Optimizations
 
-Mjolnir uses various algorithmic optimizations to improve performance:
-
 ### Spatial Indexing
 
-For efficient spatial queries, Mjolnir uses spatial indexes:
+Efficient spatial queries are essential for many operations in graph tile building:
 
-```cpp
-// From midgard/rtree.h
-template <typename T>
-class RTree {
-public:
-  RTree();
-  
-  // Insert an item
-  void Insert(const T& item, const BoundingBox& bounds);
-  
-  // Query items within a bounding box
-  std::vector<T> Query(const BoundingBox& bounds) const;
-  
-  // Nearest neighbor query
-  std::vector<T> Nearest(const Point& point, size_t count) const;
-  
-private:
-  // Internal implementation
-  struct Node;
-  std::unique_ptr<Node> root_;
-};
-```
+- Finding nearby nodes for connectivity
+- Assigning entities to tiles
+- Identifying administrative regions
 
-The implementation uses an R-tree data structure for efficient spatial indexing:
+Use appropriate spatial indexing structures:
 
-```cpp
-// From midgard/rtree.h
-template <typename T>
-void RTree<T>::Insert(const T& item, const BoundingBox& bounds) {
-  if (!root_) {
-    root_ = std::make_unique<Node>(bounds);
-    root_->items.push_back(item);
-    return;
-  }
-  
-  // Find the best leaf node for insertion
-  Node* leaf = FindBestLeaf(root_.get(), bounds);
-  
-  // Insert the item
-  leaf->items.push_back(item);
-  leaf->bounds.Expand(bounds);
-  
-  // Rebalance the tree if needed
-  if (leaf->items.size() > max_items_) {
-    SplitNode(leaf);
-  }
+- R-trees for complex spatial queries
+- Grid-based indexes for simple proximity searches
+- Quadtrees for hierarchical spatial decomposition
+
+### Example: Grid-Based Spatial Index
+
+```rust
+struct SpatialGrid {
+    cells: Vec<Vec<NodeId>>,
+    cell_size: f64,
+    min_x: f64,
+    min_y: f64,
+    width: usize,
+    height: usize,
 }
 
-template <typename T>
-std::vector<T> RTree<T>::Query(const BoundingBox& bounds) const {
-  std::vector<T> results;
-  
-  if (!root_) {
-    return results;
-  }
-  
-  // Recursive query
-  QueryNode(root_.get(), bounds, results);
-  
-  return results;
+impl SpatialGrid {
+    fn insert(&mut self, node_id: NodeId, x: f64, y: f64) {
+        let cell_x = ((x - self.min_x) / self.cell_size) as usize;
+        let cell_y = ((y - self.min_y) / self.cell_size) as usize;
+        let cell_idx = cell_y * self.width + cell_x;
+        self.cells[cell_idx].push(node_id);
+    }
+    
+    fn find_nearby(&self, x: f64, y: f64, radius: f64) -> Vec<NodeId> {
+        // Implementation omitted for brevity
+    }
 }
 ```
 
-### Hash Tables
+### Efficient Graph Algorithms
 
-For fast lookups, Mjolnir uses hash tables:
+Many operations in graph tile building involve graph algorithms:
 
-```cpp
-// From src/mjolnir/osmdata.cc
-void OSMData::BuildNodeMap() {
-  // Create a hash map for node lookups
-  node_map_.reserve(nodes.size());
-  
-  for (const auto& node : nodes) {
-    node_map_[node.id] = &node;
-  }
+- Connectivity analysis
+- Shortest path calculations for restrictions
+- Hierarchical graph construction
+
+Use efficient implementations of these algorithms:
+
+- Breadth-first search for connectivity
+- Dijkstra's algorithm for shortest paths
+- A* for heuristic-guided searches
+
+### Caching and Memoization
+
+Many operations in graph tile building involve repeated calculations or lookups. Caching intermediate results can significantly improve performance:
+
+```rust
+use lru::LruCache;
+
+struct NodeCache {
+    cache: LruCache<NodeId, NodeData>,
 }
 
-const OSMNode* OSMData::GetNode(uint64_t id) const {
-  auto it = node_map_.find(id);
-  if (it != node_map_.end()) {
-    return it->second;
-  }
-  return nullptr;
-}
-```
-
-### String Interning
-
-To reduce memory usage for repeated strings, Mjolnir uses string interning:
-
-```cpp
-// From src/mjolnir/graphtilebuilder.cc
-uint32_t GraphTileBuilder::AddName(const std::string& name) {
-  // Check if the name already exists in the text list
-  auto it = text_offset_map_.find(name);
-  if (it != text_offset_map_.end()) {
-    return it->second;
-  }
-  
-  // Add the name to the text list
-  uint32_t offset = textlist_.size();
-  textlist_.append(name);
-  textlist_.push_back('\0');  // Null terminator
-  
-  // Add to the offset map
-  text_offset_map_[name] = offset;
-  
-  return offset;
-}
-```
-
-## Data Structure Optimizations
-
-Mjolnir uses optimized data structures to improve performance:
-
-### Bit Packing
-
-Multiple fields are packed into a single integer to save space:
-
-```cpp
-// From baldr/nodeinfo.h
-class NodeInfo {
-public:
-  // Set methods
-  void set_latlng(const std::pair<float, float>& ll);
-  void set_access(const uint32_t access);
-  void set_type(const NodeType type);
-  
-private:
-  uint64_t field1_;      // Lat,lng packed as uint64_t
-  uint32_t field2_;      // Access, intersection type, admin index
-  uint32_t field3_;      // Edge index, edge count, time zone
-};
-```
-
-The implementation packs multiple fields into each integer:
-
-```cpp
-// From baldr/nodeinfo.cc
-void NodeInfo::set_latlng(const std::pair<float, float>& ll) {
-  // Convert to fixed-point and pack into field1_
-  uint32_t lat = LatLng::Float2Fixed(ll.first);
-  uint32_t lng = LatLng::Float2Fixed(ll.second);
-  field1_ = (static_cast<uint64_t>(lat) << 32) | static_cast<uint64_t>(lng);
-}
-
-void NodeInfo::set_access(const uint32_t access) {
-  // Pack into field2_
-  field2_ = (field2_ & ~kAccessMask) | (access & kAccessMask);
-}
-
-void NodeInfo::set_type(const NodeType type) {
-  // Pack into field2_
-  field2_ = (field2_ & ~kTypeShift) | (static_cast<uint32_t>(type) << kTypeShift);
-}
-```
-
-### Cache-Friendly Data Structures
-
-To improve cache locality, Mjolnir uses cache-friendly data structures:
-
-```cpp
-// From baldr/graphtile.h
-class GraphTile {
-public:
-  GraphTile(const GraphId& id, char* ptr, size_t size);
-  
-  // Header information
-  const GraphTileHeader* header() const;
-  
-  // Access to nodes
-  const NodeInfo* node(const uint32_t id) const;
-  
-  // Access to directed edges
-  const DirectedEdge* directededge(const uint32_t idx) const;
-  
-private:
-  GraphId graphid_;        // Tile ID
-  size_t size_;            // Size in bytes
-  char* graphtile_;        // Pointer to memory
-  char* header_;           // Pointer to the header
-  char* nodes_;            // Pointer to nodes
-  char* directededges_;    // Pointer to directed edges
-  // ... pointers to other sections ...
-};
-```
-
-The implementation stores related data together for better cache locality:
-
-```cpp
-// From baldr/graphtile.cc
-GraphTile::GraphTile(const GraphId& id, char* ptr, size_t size)
-    : graphid_(id), size_(size), graphtile_(ptr) {
-  // Set pointers to the start of each section
-  header_ = graphtile_;
-  nodes_ = graphtile_ + sizeof(GraphTileHeader);
-  directededges_ = nodes_ + header_->nodecount() * sizeof(NodeInfo);
-  // ... set other pointers ...
-}
-
-const NodeInfo* GraphTile::node(const uint32_t id) const {
-  if (id < header_->nodecount()) {
-    return &nodes_[id];
-  }
-  throw std::runtime_error("NodeInfo index out of bounds: " + std::to_string(id));
-}
-
-const DirectedEdge* GraphTile::directededge(const uint32_t idx) const {
-  if (idx < header_->directededgecount()) {
-    return &directededges_[idx];
-  }
-  throw std::runtime_error("DirectedEdge index out of bounds: " + std::to_string(idx));
+impl NodeCache {
+    fn get_or_load(&mut self, node_id: NodeId, loader: impl FnOnce() -> NodeData) -> &NodeData {
+        if !self.cache.contains(&node_id) {
+            let data = loader();
+            self.cache.put(node_id, data);
+        }
+        self.cache.get(&node_id).unwrap()
+    }
 }
 ```
 
 ## I/O Optimizations
 
-Efficient I/O is crucial for processing large datasets:
+### Efficient File Formats
 
-### Buffered I/O
+Choose appropriate file formats for different stages of processing:
 
-Mjolnir uses buffered I/O for efficient file access:
-
-```cpp
-// From src/mjolnir/graphtilebuilder.cc
-void GraphTileBuilder::StoreTileData() {
-  // Create the file name
-  std::string filename = tile_dir_ + "/" + GraphTile::FileSuffix(header_->graphid());
-  
-  // Make sure the directory exists
-  boost::filesystem::create_directories(boost::filesystem::path(filename).parent_path());
-  
-  // Open the file with a buffer
-  std::ofstream file(filename, std::ios::out | std::ios::binary);
-  if (!file.is_open()) {
-    throw std::runtime_error("Failed to open file: " + filename);
-  }
-  
-  // Set a large buffer size
-  std::vector<char> buffer(1024 * 1024);  // 1 MB buffer
-  file.rdbuf()->pubsetbuf(buffer.data(), buffer.size());
-  
-  // Write the header
-  file.write(reinterpret_cast<const char*>(header_), sizeof(GraphTileHeader));
-  
-  // Write the nodes
-  file.write(reinterpret_cast<const char*>(nodes_.data()), nodes_.size() * sizeof(NodeInfo));
-  
-  // Write the directed edges
-  file.write(reinterpret_cast<const char*>(directededges_.data()),
-             directededges_.size() * sizeof(DirectedEdge));
-  
-  // ... write other sections ...
-  
-  // Close the file
-  file.close();
-}
-```
+- GeoParquet for input data (efficient columnar storage)
+- Custom binary formats for intermediate data
+- Memory-mapped files for large datasets
+- Compressed formats for final output
 
 ### Batch Processing
 
-To reduce I/O overhead, Mjolnir processes data in batches:
+Group I/O operations to reduce overhead:
 
-```cpp
-// From src/mjolnir/graphbuilder.cc
-void GraphBuilder::BuildTiles() {
-  // Group nodes by tile
-  std::unordered_map<GraphId, std::vector<OSMNode>> nodes_by_tile;
-  for (const auto& node : osmdata_.nodes) {
-    GraphId tile_id = GetTileId(node);
-    nodes_by_tile[tile_id].push_back(node);
-  }
-  
-  // Group ways by tile
-  std::unordered_map<GraphId, std::vector<OSMWay>> ways_by_tile;
-  for (const auto& way : osmdata_.ways) {
-    // A way can span multiple tiles
-    std::unordered_set<GraphId> tiles;
-    for (const auto& node_id : way.node_ids) {
-      const auto& node = osmdata_.node_map.at(node_id);
-      GraphId tile_id = GetTileId(node);
-      tiles.insert(tile_id);
+```rust
+fn write_nodes_batch(nodes: &[Node], writer: &mut impl Write) -> Result<(), Error> {
+    // Write count
+    writer.write_u32::<LittleEndian>(nodes.len() as u32)?;
+    
+    // Write nodes in a single batch
+    for node in nodes {
+        node.write(writer)?;
     }
     
-    // Add the way to each tile it touches
-    for (const auto& tile_id : tiles) {
-      ways_by_tile[tile_id].push_back(way);
+    Ok(())
+}
+```
+
+### Memory-Mapped Files
+
+For large datasets, memory-mapped files can provide efficient random access without loading the entire file into memory:
+
+```rust
+use memmap2::Mmap;
+
+fn process_with_mmap(path: &Path) -> Result<(), Error> {
+    let file = File::open(path)?;
+    let mmap = unsafe { Mmap::map(&file)? };
+    
+    // Process data using memory-mapped access
+    // ...
+    
+    Ok(())
+}
+```
+
+## Overture-Specific Optimizations
+
+### Leveraging Explicit Topology
+
+Overture's explicit representation of connectors provides opportunities for optimization:
+
+- Direct connectivity information without node inference
+- Simplified turn restriction processing
+- More efficient hierarchical graph construction
+
+### Example: Direct Connectivity Processing
+
+```rust
+fn build_connectivity_graph(segments: &[Segment]) -> ConnectivityGraph {
+    let mut graph = ConnectivityGraph::new();
+    
+    for segment in segments {
+        for connector in &segment.properties.connectors {
+            graph.add_connection(
+                connector.connector_id,
+                segment.id,
+                connector.at
+            );
+        }
     }
-  }
-  
-  // Process each tile
-  for (const auto& [tile_id, nodes] : nodes_by_tile) {
-    const auto& ways = ways_by_tile[tile_id];
-    BuildTile(tile_id, nodes, ways);
-  }
+    
+    graph
 }
 ```
 
-## Profiling and Benchmarking
+### Optimizing Linear Referencing
 
-Mjolnir includes tools for profiling and benchmarking to identify performance bottlenecks:
+Overture's linear referencing system allows for precise attribute placement, but requires efficient processing:
 
-```cpp
-// From src/mjolnir/valhalla_build_tiles.cc
-int main(int argc, char** argv) {
-  // Parse command line arguments
-  // ...
-  
-  // Start timing
-  auto start_time = std::chrono::high_resolution_clock::now();
-  
-  // Build the tiles
-  GraphBuilder builder;
-  builder.Build(config, input_files);
-  
-  // End timing
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
-  
-  // Report timing
-  std::cout << "Tile building completed in " << duration.count() << " seconds" << std::endl;
-  
-  return 0;
+- Convert linear references to discrete points for Valhalla
+- Preserve attribute variations along segments
+- Handle complex cases like lane changes mid-segment
+
+## Benchmarking and Profiling
+
+### Measuring Performance
+
+Establish clear performance metrics:
+
+- Processing time (total and per stage)
+- Memory usage (peak and average)
+- I/O operations and throughput
+- Tile size and count
+
+### Example: Simple Benchmarking
+
+```rust
+use std::time::Instant;
+
+fn benchmark<F, T>(name: &str, f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    let start = Instant::now();
+    let result = f();
+    let duration = start.elapsed();
+    
+    println!("{} took {:?}", name, duration);
+    
+    result
 }
 ```
 
-## Performance Metrics
+### Profiling Tools
 
-Mjolnir tracks various performance metrics:
+Use appropriate profiling tools to identify bottlenecks:
 
-```cpp
-// From src/mjolnir/graphbuilder.cc
-void GraphBuilder::Build(const Config& config, const std::vector<std::string>& input_files) {
-  // Initialize metrics
-  size_t node_count = 0;
-  size_t edge_count = 0;
-  size_t tile_count = 0;
-  
-  // Parse input data
-  auto parse_start = std::chrono::high_resolution_clock::now();
-  parser_.Parse(input_files);
-  auto parse_end = std::chrono::high_resolution_clock::now();
-  auto parse_duration = std::chrono::duration_cast<std::chrono::seconds>(parse_end - parse_start);
-  
-  // Build the tiles
-  auto build_start = std::chrono::high_resolution_clock::now();
-  BuildTiles();
-  auto build_end = std::chrono::high_resolution_clock::now();
-  auto build_duration = std::chrono::duration_cast<std::chrono::seconds>(build_end - build_start);
-  
-  // Collect metrics
-  for (const auto& tile : tiles_) {
-    node_count += tile.node_count;
-    edge_count += tile.edge_count;
-    tile_count++;
-  }
-  
-  // Report metrics
-  std::cout << "Parsing completed in " << parse_duration.count() << " seconds" << std::endl;
-  std::cout << "Tile building completed in " << build_duration.count() << " seconds" << std::endl;
-  std::cout << "Created " << tile_count << " tiles with " << node_count << " nodes and "
-            << edge_count << " edges" << std::endl;
+- CPU profilers (perf, flamegraph)
+- Memory profilers (heaptrack, valgrind)
+- I/O profilers (iotop, strace)
+
+### Continuous Performance Testing
+
+Integrate performance testing into your development workflow:
+
+- Establish performance baselines
+- Run benchmarks on representative datasets
+- Track performance changes over time
+- Set performance budgets and alerts
+
+## Incremental Processing
+
+### Handling Updates
+
+For ongoing maintenance, process only changed data:
+
+```mermaid
+flowchart TD
+    A[New Data] --> B{Changed?}
+    B -- Yes --> C[Process Changes]
+    B -- No --> D[Skip]
+    C --> E[Update Tiles]
+    D --> F[Keep Existing Tiles]
+```
+
+### Example: Change Detection
+
+```rust
+fn detect_changes(old_data: &Dataset, new_data: &Dataset) -> ChangeSet {
+    let mut changes = ChangeSet::new();
+    
+    // Find added entities
+    for entity in new_data.entities() {
+        if !old_data.contains(entity.id) {
+            changes.add_added(entity.clone());
+        }
+    }
+    
+    // Find modified entities
+    for entity in new_data.entities() {
+        if let Some(old_entity) = old_data.get(entity.id) {
+            if entity != old_entity {
+                changes.add_modified(old_entity.clone(), entity.clone());
+            }
+        }
+    }
+    
+    // Find deleted entities
+    for entity in old_data.entities() {
+        if !new_data.contains(entity.id) {
+            changes.add_deleted(entity.clone());
+        }
+    }
+    
+    changes
 }
 ```
 
-## Performance optimization is crucial for building a graph tile builder that can handle planet-scale data. By using efficient memory management, parallel processing, algorithmic optimizations, and optimized data structures, Mjolnir can process large datasets in a reasonable amount of time.
+### Tile-Based Updates
+
+Update only the tiles affected by changes:
+
+1. Identify changed entities
+2. Determine which tiles contain these entities
+3. Rebuild only those tiles
+4. Update tile references as needed
+
+## Conclusion
+
+Performance optimization is an ongoing process that requires careful measurement, analysis, and improvement. By applying these strategies to our Overture graph tile building process, we can handle planet-scale data efficiently and produce high-quality routing graphs.
+
+Remember that premature optimization can lead to unnecessary complexity. Always measure first to identify actual bottlenecks, then apply targeted optimizations where they'll have the most impact.
