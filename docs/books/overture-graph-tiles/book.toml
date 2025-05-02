@@ -1,0 +1,31 @@
+[book]
+title = "Building Overture Graph Tiles: Understanding Valhalla's Mjolnir and Beyond"
+authors = ["Swagata Prateek", "Overture Maps Foundation Contributors"]
+description = "A comprehensive guide to building graph tiles for routing with Overture Maps data"
+language = "en"
+multilingual = false
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/OvertureMaps/transportation-routing"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/OvertureMaps/transportation-routing/edit/main/docs/books/overture-graph-tiles/{path}"
+additional-css = ["mermaid.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html.playground]
+editable = true
+line-numbers = true
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 2
