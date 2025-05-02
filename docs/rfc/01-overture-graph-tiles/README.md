@@ -96,8 +96,17 @@ Our integration will focus on bypassing the OSM-specific parts of this pipeline 
 
 In Phase 1, we'll create a transcoder that converts Overture data to Valhalla's binary file formats, which can then be processed by Valhalla's existing pipeline.
 
+```mermaid
+flowchart LR
+    A["Overture Data GeoParquet"] --> B["Rust-based Transcoder"]
+    B --> C["Valhalla Tile Builder"]
+    C --> D["Routing Engine"]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:1px
+    style B fill:#f96,stroke:#333,stroke-width:1px
+    style C fill:#69f,stroke:#333,stroke-width:1px
+    style D fill:#6c6,stroke:#333,stroke-width:1px
 ```
-┌─────────────┐     ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
 │  Overture   │     │  Rust-based   │     │  Valhalla     │     │  Routing      │
 │  Data       │────▶│  Transcoder   │────▶│  Tile Builder │────▶│  Engine       │
 │ (GeoParquet)│     │               │     │               │     │               │
@@ -119,19 +128,24 @@ Based on our analysis of Valhalla's codebase, the `ConstructEdges` phase is the 
 
 #### Valhalla Pipeline and Integration Point
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Valhalla Pipeline                                 │
-├─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬────────────────┤
-│ Parse   │ Create  │ Construct│ Build   │ Enhance │ Create  │ Final          │
-│ OSM     │ OSMData │ Edges   │ Graph   │ Graph   │ Hierarchy│ Tiles         │
-└─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴────────────────┘
-                      ▲
-                      │
-┌─────────┬───────────┴───────┐
-│ Overture│ Overture          │
-│ Data    │ Transcoder        │
-└─────────┴───────────────────┘
+```mermaid
+flowchart TD
+    subgraph "Valhalla Pipeline"
+        A["Parse OSM"] --> B["Create OSMData"]
+        B --> C["Construct Edges"]
+        C --> D["Build Graph"]
+        D --> E["Enhance Graph"]
+        E --> F["Create Hierarchy"]
+        F --> G["Final Tiles"]
+    end
+    
+    subgraph "Our Integration"
+        H["Overture Data"] --> I["Overture Transcoder"]
+        I --> C
+    end
+    
+    style I fill:#f96,stroke:#333,stroke-width:2px
+    style C fill:#69f,stroke:#333,stroke-width:2px
 ```
 
 #### Binary Files to Generate
@@ -160,29 +174,43 @@ This mapping leverages the natural correspondence between Overture's segments an
 
 Overture segments contain rich information about road characteristics that needs to be mapped to Valhalla's OSMWay structure:
 
+```mermaid
+flowchart TD
+    subgraph "Overture Segment"
+        A1["id: 123"]
+        A2["geometry: LineString(...)"]
+        A3["properties"]
+        A3 --> A4["subtype: road"]
+        A3 --> A5["class: motorway"]
+        A3 --> A6["access_restrictions: { vehicle: yes, ... }"]
+        A3 --> A7["speed_limits: { default: 100, ... }"]
+        A3 --> A8["connectors"]
+        A8 --> A9["{ connector_id: 456, at: 0.0 }"]
+        A8 --> A10["{ connector_id: 789, at: 1.0 }"]
+    end
+    
+    B["Mapping Process"]
+    
+    subgraph "Valhalla OSMWay"
+        C1["osmwayid_: 123"]
+        C2["node_ids_: [456, 789]"]
+        C3["road_class_: kMotorway"]
+        C4["speed_: 100"]
+        C5["forward_access_: kAllAccess"]
+        C6["backward_access_: kAllAccess"]
+        C7["..."]
+    end
+    
+    A1 --> B
+    A2 --> B
+    A3 --> B
+    B --> C1
+    B --> C2
+    B --> C3
+    B --> C4
+    B --> C5
+    B --> C6
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Overture Segment                                        │
-├─────────────────────────────────────────────────────────┤
-│ id: "123"                                               │
-│ geometry: LineString(...)                               │
-│ properties:                                             │
-│   subtype: "road"                                       │
-│   class: "motorway"                                     │
-│   access_restrictions: { vehicle: "yes", ... }          │
-│   speed_limits: { default: 100, ... }                   │
-│   connectors: [                                         │
-│     { connector_id: "456", at: 0.0 },                   │
-│     { connector_id: "789", at: 1.0 }                    │
-│   ]                                                     │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│ Valhalla OSMWay                                         │
-├─────────────────────────────────────────────────────────┤
-│ osmwayid_: 123                                          │
-│ node_ids_: [456, 789]                                   │
 │ road_class_: kMotorway                                  │
 │ speed_: 100                                             │
 │ forward_access_: kAllAccess                             │
@@ -261,18 +289,16 @@ This milestone represents the first practical use of Overture data for routing a
 
 In Phase 2, we'll explore more efficient integration methods and begin research on an Overture-specific tile format.
 
-```
-┌─────────────┐     ┌───────────────┐     ┌───────────────┐
-│  Overture   │     │  Enhanced     │     │  Valhalla     │
-│  Data       │────▶│  Integration  │────▶│  Routing      │
-│ (GeoParquet)│     │  Layer        │     │  Engine       │
-└─────────────┘     └───────────────┘     └───────────────┘
-                           │
-                           ▼
-                    ┌───────────────┐
-                    │  Tile Format  │
-                    │  Research     │
-                    └───────────────┘
+```mermaid
+flowchart TD
+    A["Overture Data GeoParquet"] --> B["Enhanced Integration Layer"]
+    B --> C["Valhalla Routing Engine"]
+    B --> D["Tile Format Research"]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:1px
+    style B fill:#f96,stroke:#333,stroke-width:1px
+    style C fill:#6c6,stroke:#333,stroke-width:1px
+    style D fill:#69f,stroke:#333,stroke-width:1px
 ```
 
 #### Direct Integration with Valhalla
@@ -327,19 +353,28 @@ This milestone represents a significant advancement in our understanding of how 
 
 In Phase 3, we'll implement a full Overture Graph Tiles format optimized for Overture's data model and routing applications.
 
-```
-┌─────────────┐     ┌───────────────┐     ┌───────────────┐
-│  Overture   │     │  Overture     │     │  Overture     │
-│  Data       │────▶│  Tile         │────▶│  Graph        │
-│ (GeoParquet)│     │  Builder      │     │  Tiles        │
-└─────────────┘     └───────────────┘     └───────────────┘
-                                                │
-                                                ▼
-┌─────────────┐     ┌───────────────┐     ┌───────────────┐
-│  Routing    │     │  Routing      │     │  Converter    │
-│  API        │◀────│  Engine       │◀────│  Modules      │
-│             │     │               │     │               │
-└─────────────┘     └───────────────┘     └───────────────┘
+```mermaid
+flowchart TD
+    A["Overture Data GeoParquet"] --> B["Overture Tile Builder"]
+    B --> C["Overture Graph Tiles"]
+    
+    C --> D1["Valhalla Converter"]
+    C --> D2["OSRM Converter"]
+    C --> D3["GraphHopper Converter"]
+    
+    D1 --> E1["Valhalla Routing"]
+    D2 --> E2["OSRM Routing"]
+    D3 --> E3["GraphHopper Routing"]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:1px
+    style B fill:#f96,stroke:#333,stroke-width:1px
+    style C fill:#69f,stroke:#333,stroke-width:1px
+    style D1 fill:#9cf,stroke:#333,stroke-width:1px
+    style D2 fill:#9cf,stroke:#333,stroke-width:1px
+    style D3 fill:#9cf,stroke:#333,stroke-width:1px
+    style E1 fill:#6c6,stroke:#333,stroke-width:1px
+    style E2 fill:#6c6,stroke:#333,stroke-width:1px
+    style E3 fill:#6c6,stroke:#333,stroke-width:1px
 ```
 
 #### Tile Structure
@@ -364,14 +399,62 @@ The Overture Graph Tiles will consist of:
 
 #### Detailed Tile Structure
 
+```mermaid
+classDiagram
+    class OvertureGraphTile {
+        +Header header
+        +List~Node~ nodes
+        +List~DirectedEdge~ edges
+        +List~EdgeAttribute~ attributes
+        +List~AdminInfo~ adminInfo
+    }
+    
+    class Header {
+        +uint32 tileId
+        +uint32 version
+        +BoundingBox bbox
+        +uint64 creationDate
+    }
+    
+    class Node {
+        +uint64 nodeId
+        +LatLon location
+        +uint8 type
+        +uint16 access
+        +uint32 edgeIndex
+    }
+    
+    class DirectedEdge {
+        +uint64 edgeId
+        +uint64 startNode
+        +uint64 endNode
+        +float length
+        +uint8 speed
+        +uint16 access
+        +uint8 classification
+        +uint32 attributesIndex
+    }
+    
+    class EdgeAttribute {
+        +List~string~ names
+        +List~LatLon~ shapePoints
+        +LaneInfo laneInfo
+        +List~TurnRestriction~ turnRestrictions
+        +TrafficData trafficData
+    }
+    
+    class AdminInfo {
+        +List~Boundary~ boundaries
+        +List~string~ countries
+        +List~string~ regions
+    }
+    
+    OvertureGraphTile --> Header
+    OvertureGraphTile --> Node
+    OvertureGraphTile --> DirectedEdge
+    OvertureGraphTile --> EdgeAttribute
+    OvertureGraphTile --> AdminInfo
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Overture Graph Tile                                     │
-├─────────────────────────────────────────────────────────┤
-│ Header                                                  │
-│  - Tile ID                                              │
-│  - Version                                              │
-│  - Bounding Box                                         │
 │  - Creation Date                                        │
 ├─────────────────────────────────────────────────────────┤
 │ Nodes                                                   │
