@@ -1,462 +1,254 @@
-# Appendix: Technical Details for Overture Graph Tiles RFC
+# Appendix: Detailed Implementation Plan for Phase 1
 
-This appendix provides additional technical details to supplement the Overture Graph Tiles RFC.
+This appendix provides a detailed implementation plan for Phase 1 of the Overture Graph Tiles project. The plan is structured as a series of tasks that can be directly translated into GitHub issues and project tasks.
 
-## Appendix A: Valhalla Integration Details
+## 1. Research and Analysis Tasks
 
-### A.1 Binary File Formats
+### 1.1 Valhalla Binary Format Analysis
+- **Description**: Analyze Valhalla's binary file formats to understand their structure and requirements
+- **Subtasks**:
+  - Analyze `ways.bin` format and OSMWay structure
+  - Analyze `nodes.bin` format and OSMNode structure
+  - Analyze `way_nodes.bin` format and OSMWayNode structure
+  - Document binary format specifications
+- **Dependencies**: None
+- **Estimated Effort**: 2 weeks
 
-Valhalla uses several binary files during its graph building process:
+### 1.2 Overture to Valhalla Attribute Mapping Research
+- **Description**: Research and document how Overture attributes map to Valhalla attributes
+- **Subtasks**:
+  - Research road classification mapping
+  - Research access restriction mapping
+  - Research speed limit and lane information mapping
+  - Research turn restriction representation
+  - Document attribute mapping specifications
+- **Dependencies**: None
+- **Estimated Effort**: 2 weeks
 
-1. **ways.bin**: Contains serialized `OSMWay` structures
-   ```cpp
-   struct OSMWay {
-     uint64_t osmwayid_;
-     uint64_t node_count_;
-     uint8_t road_class_;
-     uint8_t use_;
-     uint8_t lanes_;
-     uint8_t forward_lanes_;
-     uint8_t backward_lanes_;
-     uint32_t speed_;
-     // Additional attributes...
-   };
-   ```
+### 1.3 Administrative Boundary Processing Research
+- **Description**: Research how to process Overture administrative boundaries for use with Valhalla
+- **Subtasks**:
+  - Research DuckDB capabilities for processing GeoParquet data
+  - Research Spatialite format requirements for Valhalla
+  - Document administrative boundary processing approach
+- **Dependencies**: None
+- **Estimated Effort**: 1 week
 
-2. **nodes.bin**: Contains serialized `OSMNode` structures
-   ```cpp
-   struct OSMNode {
-     uint64_t node_id;
-     uint16_t access;
-     NodeType type;
-     bool intersection;
-     bool traffic_signal;
-     // Additional attributes...
-     double lat;
-     double lng;
-   };
-   ```
+## 2. Core Implementation Tasks
 
-3. **way_nodes.bin**: Contains serialized `OSMWayNode` structures
-   ```cpp
-   struct OSMWayNode {
-     uint64_t way_id;
-     uint64_t node_id;
-   };
-   ```
+### 2.1 Rust Project Setup
+- **Description**: Set up the Rust project structure for the transcoder
+- **Subtasks**:
+  - Create project repository
+  - Set up build system and dependencies
+  - Configure CI/CD pipeline
+  - Create initial documentation
+- **Dependencies**: None
+- **Estimated Effort**: 1 week
 
-### A.2 Rust Implementation for Binary File Generation
+### 2.2 GeoParquet Reader Implementation
+- **Description**: Implement a reader for Overture GeoParquet data
+- **Subtasks**:
+  - Implement basic GeoParquet file reading
+  - Implement filtering and projection capabilities
+  - Implement streaming processing for large files
+  - Create tests for GeoParquet reader
+- **Dependencies**: 2.1
+- **Estimated Effort**: 2 weeks
 
-```rust
-// Example Rust code for generating ways.bin
-pub struct OSMWay {
-    osmwayid: u64,
-    node_count: u64,
-    road_class: u8,
-    use_type: u8,
-    lanes: u8,
-    forward_lanes: u8,
-    backward_lanes: u8,
-    speed: u32,
-    // Additional fields...
-}
+### 2.3 Binary File Writer Implementation
+- **Description**: Implement writers for Valhalla's binary file formats
+- **Subtasks**:
+  - Implement OSMWay serialization for ways.bin
+  - Implement OSMNode serialization for nodes.bin
+  - Implement OSMWayNode serialization for way_nodes.bin
+  - Create tests for binary file writers
+- **Dependencies**: 1.1, 2.1
+- **Estimated Effort**: 2 weeks
 
-impl OSMWay {
-    pub fn from_overture_segment(segment: &Segment) -> Self {
-        // Convert Overture segment to OSMWay
-        OSMWay {
-            osmwayid: segment.id.parse().unwrap_or(0),
-            node_count: segment.geometry.coordinates.len() as u64,
-            road_class: map_road_class(&segment.properties.class),
-            // Map other attributes...
-        }
-    }
-    
-    pub fn write_to_binary<W: Write>(&self, writer: &mut W) -> Result<(), std::io::Error> {
-        // Write binary representation
-        writer.write_all(&self.osmwayid.to_le_bytes())?;
-        writer.write_all(&self.node_count.to_le_bytes())?;
-        // Write other fields...
-        Ok(())
-    }
-}
-```
+### 2.4 Entity Mapping Implementation
+- **Description**: Implement the core entity mapping logic
+- **Subtasks**:
+  - Implement Segment to OSMWay mapping
+  - Implement Connector to OSMNode mapping
+  - Implement Segment-Connector to OSMWayNode mapping
+  - Create tests for entity mapping
+- **Dependencies**: 1.2, 2.2, 2.3
+- **Estimated Effort**: 3 weeks
 
-### A.3 Valhalla Integration Command Line
+### 2.5 Attribute Mapping Implementation
+- **Description**: Implement the attribute mapping logic
+- **Subtasks**:
+  - Implement road classification mapping
+  - Implement access restriction mapping
+  - Implement speed limit and lane information mapping
+  - Create tests for attribute mapping
+- **Dependencies**: 1.2, 2.4
+- **Estimated Effort**: 3 weeks
 
-```bash
-# Example command line for Valhalla integration
-# 1. Convert Overture data to Valhalla binary files
-overture-transcoder --input overture-data.parquet --output-dir ./valhalla_tiles
+### 2.6 Command-Line Interface Implementation
+- **Description**: Implement a user-friendly command-line interface for the transcoder
+- **Subtasks**:
+  - Design CLI arguments and options
+  - Implement configuration file support
+  - Implement progress reporting
+  - Create documentation for CLI usage
+- **Dependencies**: 2.4, 2.5
+- **Estimated Effort**: 1 week
 
-# 2. Run Valhalla tile builder starting from ConstructEdges phase
-valhalla_build_tiles --config ./valhalla.json --start construct_edges --end cleanup
-```
+## 3. Advanced Feature Implementation
 
-## Appendix B: Overture Graph Tile Format Details
+### 3.1 Turn Restriction Implementation
+- **Description**: Implement support for turn restrictions
+- **Subtasks**:
+  - Analyze Overture's prohibited_transitions representation
+  - Implement mapping to Valhalla's restriction format
+  - Create tests for turn restriction mapping
+- **Dependencies**: 2.5
+- **Estimated Effort**: 2 weeks
 
-### B.1 Tile Indexing Scheme
+### 3.2 Administrative Boundary Processing Implementation
+- **Description**: Implement processing of administrative boundaries
+- **Subtasks**:
+  - Implement DuckDB-based processing of Overture admin boundaries
+  - Implement conversion to Spatialite format
+  - Create tests for admin boundary processing
+- **Dependencies**: 1.3, 2.2
+- **Estimated Effort**: 2 weeks
 
-Overture Graph Tiles will use a hierarchical indexing scheme:
+### 3.3 Performance Optimization
+- **Description**: Optimize the transcoder for performance with large datasets
+- **Subtasks**:
+  - Implement parallel processing for tile creation
+  - Optimize memory usage
+  - Implement progress tracking and resumability
+  - Benchmark and profile the transcoder
+- **Dependencies**: 2.4, 2.5
+- **Estimated Effort**: 2 weeks
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ Tile ID Structure                                       │
-├─────────────────────────────────────────────────────────┤
-│ Level (4 bits) | X Coordinate (24 bits) | Y Coordinate (24 bits) │
-└─────────────────────────────────────────────────────────┘
-```
+## 4. Integration and Testing
 
-- **Level**: Hierarchy level (0-15)
-  - Level 0: Highway network
-  - Level 1: Arterial network
-  - Level 2: Local network
-  - Additional levels as needed
+### 4.1 Valhalla Integration Script
+- **Description**: Create a script that automates the process of converting Overture data and running Valhalla's build pipeline
+- **Subtasks**:
+  - Implement script for running the transcoder
+  - Implement script for invoking Valhalla's build pipeline
+  - Create documentation for the integration script
+- **Dependencies**: 2.6
+- **Estimated Effort**: 1 week
 
-- **X/Y Coordinates**: Based on a global grid system
-  - Higher levels (lower numbers) have larger tiles
-  - Each level increases resolution by a factor of 4
+### 4.2 End-to-End Testing
+- **Description**: Test the complete pipeline from Overture data to Valhalla routing
+- **Subtasks**:
+  - Create test datasets
+  - Implement test cases for various routing scenarios
+  - Validate routing results
+  - Document test results
+- **Dependencies**: 3.1, 3.2, 3.3, 4.1
+- **Estimated Effort**: 2 weeks
 
-### B.2 Node Structure
+### 4.3 Documentation and Examples
+- **Description**: Create comprehensive documentation and examples
+- **Subtasks**:
+  - Create user documentation
+  - Create developer documentation
+  - Create example configurations
+  - Create tutorials for common use cases
+- **Dependencies**: 4.2
+- **Estimated Effort**: 2 weeks
 
-```rust
-struct Node {
-    // Node identifier
-    id: u64,
-    
-    // Geographic location
-    lat: f32,
-    lng: f32,
-    
-    // Node type (intersection, dead-end, etc.)
-    node_type: u8,
-    
-    // Access restrictions
-    access: u16,
-    
-    // Index to first outgoing edge
-    edge_index: u32,
-    
-    // Number of outgoing edges
-    edge_count: u16,
-    
-    // Additional attributes
-    traffic_signal: bool,
-    stop_sign: bool,
-    administrative_index: u32,
-}
-```
+## 5. Release and Deployment
 
-### B.3 Directed Edge Structure
+### 5.1 Release Preparation
+- **Description**: Prepare for the initial release
+- **Subtasks**:
+  - Finalize documentation
+  - Create release notes
+  - Perform final testing
+  - Create installation packages
+- **Dependencies**: 4.3
+- **Estimated Effort**: 1 week
 
-```rust
-struct DirectedEdge {
-    // Edge identifier
-    id: u64,
-    
-    // Connected nodes
-    start_node: u32,
-    end_node: u32,
-    
-    // Physical properties
-    length_meters: f32,
-    speed_kph: u8,
-    
-    // Classification
-    road_class: u8,
-    use_type: u8,
-    
-    // Access restrictions
-    access: u16,
-    
-    // Indices to additional data
-    shape_index: u32,
-    name_index: u32,
-    
-    // Routing properties
-    forward: bool,
-    toll: bool,
-    seasonal: bool,
-    destination_only: bool,
-    
-    // Turn restrictions
-    restriction_index: u32,
-}
-```
+### 5.2 Deployment and Monitoring
+- **Description**: Deploy the initial release and monitor usage
+- **Subtasks**:
+  - Publish release
+  - Monitor for issues
+  - Gather user feedback
+  - Plan for future improvements
+- **Dependencies**: 5.1
+- **Estimated Effort**: 1 week
 
-### B.4 Binary Tile Format
+## Timeline and Dependencies
 
-The binary tile format will use a structured layout:
+The following diagram illustrates the dependencies between tasks and the overall timeline:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Tile Header (fixed size)                                │
-├─────────────────────────────────────────────────────────┤
-│ Node Count                                              │
-│ Edge Count                                              │
-│ Name Count                                              │
-│ Shape Count                                             │
-│ ...                                                     │
-├─────────────────────────────────────────────────────────┤
-│ Nodes Array (fixed size per entry)                      │
-├─────────────────────────────────────────────────────────┤
-│ Directed Edges Array (fixed size per entry)             │
-├─────────────────────────────────────────────────────────┤
-│ Names Table (variable size)                             │
-├─────────────────────────────────────────────────────────┤
-│ Shapes Array (variable size)                            │
-├─────────────────────────────────────────────────────────┤
-│ Additional Data (variable size)                         │
-└─────────────────────────────────────────────────────────┘
+Week:  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+1.1   [==]
+1.2   [==]
+1.3   [=]
+2.1   [=]
+2.2      [==]
+2.3      [==]
+2.4         [===]
+2.5            [===]
+2.6                [=]
+3.1                   [==]
+3.2                   [==]
+3.3                      [==]
+4.1                         [=]
+4.2                            [==]
+4.3                               [==]
+5.1                                  [=]
+5.2                                     [=]
 ```
 
-## Appendix C: Performance Considerations
+## Resource Requirements
 
-### C.1 Memory Usage Optimization
+To successfully complete Phase 1, the following resources will be required:
 
-To optimize memory usage during tile creation and routing:
+1. **Development Team**:
+   - 2-3 Rust developers with experience in data processing and serialization
+   - 1 developer with Valhalla expertise
 
-1. **Streaming Processing**:
-   ```rust
-   fn process_overture_data<R: Read>(reader: R) -> Result<Vec<GraphTile>, Error> {
-       let mut tiles = HashMap::new();
-       let mut parser = GeoParquetReader::new(reader);
-       
-       while let Some(feature) = parser.next_feature()? {
-           let tile_id = calculate_tile_id(feature.geometry);
-           let tile = tiles.entry(tile_id).or_insert_with(|| GraphTile::new(tile_id));
-           tile.add_feature(feature);
-       }
-       
-       Ok(tiles.into_values().collect())
-   }
-   ```
+2. **Computing Resources**:
+   - Development machines with sufficient RAM (16GB+) for processing large datasets
+   - CI/CD infrastructure for automated testing
+   - Storage for test datasets and results
 
-2. **Parallel Processing**:
-   ```rust
-   fn create_tiles_in_parallel(data_path: &str) -> Result<(), Error> {
-       let file = File::open(data_path)?;
-       let reader = BufReader::new(file);
-       
-       // Split data into chunks
-       let chunks = split_into_chunks(reader)?;
-       
-       // Process chunks in parallel
-       let results: Vec<_> = chunks.par_iter()
-           .map(|chunk| process_chunk(chunk))
-           .collect();
-           
-       // Merge results
-       merge_tiles(results)
-   }
-   ```
+3. **Software Dependencies**:
+   - Rust toolchain
+   - Valhalla routing engine
+   - DuckDB for administrative boundary processing
+   - GeoParquet libraries
 
-### C.2 Routing Performance Optimization
+## Risk Assessment and Mitigation
 
-To optimize routing performance:
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|------------|------------|
+| Binary format incompatibility | High | Medium | Extensive testing with known inputs/outputs; binary diffing tools |
+| Attribute mapping inaccuracies | High | Medium | Comprehensive validation suite; manual verification of routing results |
+| Performance issues with large datasets | Medium | High | Incremental development with performance testing at each stage |
+| Valhalla version changes | Medium | Low | Design for compatibility with multiple versions; automated testing |
+| Administrative boundary complexity | Medium | Medium | Start with simplified admin model; add complexity incrementally |
 
-1. **Hierarchical Routing**:
-   ```rust
-   fn find_path(start: LatLng, end: LatLng) -> Result<Path, Error> {
-       // Find closest nodes in the highest level (highways)
-       let (start_high, end_high) = find_closest_high_level_nodes(start, end);
-       
-       // Route on highway network
-       let high_path = route_on_level(start_high, end_high, Level::Highway);
-       
-       // Connect start and end to highway network
-       let start_connection = connect_to_highway(start, start_high);
-       let end_connection = connect_to_highway(end, end_high);
-       
-       // Combine paths
-       combine_paths(start_connection, high_path, end_connection)
-   }
-   ```
+## Success Criteria
 
-2. **Tile Caching**:
-   ```rust
-   struct TileCache {
-       tiles: LruCache<TileId, GraphTile>,
-       max_size: usize,
-   }
-   
-   impl TileCache {
-       fn get_tile(&mut self, id: TileId) -> Result<&GraphTile, Error> {
-           if !self.tiles.contains(&id) {
-               let tile = load_tile_from_disk(id)?;
-               self.tiles.put(id, tile);
-           }
-           Ok(self.tiles.get(&id).unwrap())
-       }
-   }
-   ```
+Phase 1 will be considered successful when:
 
-## Appendix D: Integration with Multiple Routing Engines
+1. The transcoder can convert Overture transportation data to Valhalla's binary formats
+2. Valhalla can successfully build routing tiles from these binary files
+3. Routing queries produce correct results for various transportation modes
+4. The process works with large, real-world datasets
+5. Documentation and examples are complete and usable
 
-### D.1 Valhalla Integration
+## Next Steps After Phase 1
 
-```rust
-fn convert_to_valhalla(tile: &OvertureGraphTile) -> Result<ValhallaTile, Error> {
-    let mut valhalla_tile = ValhallaTile::new(tile.header.tile_id);
-    
-    // Convert nodes
-    for node in &tile.nodes {
-        let valhalla_node = convert_node_to_valhalla(node);
-        valhalla_tile.add_node(valhalla_node);
-    }
-    
-    // Convert edges
-    for edge in &tile.directed_edges {
-        let valhalla_edge = convert_edge_to_valhalla(edge);
-        valhalla_tile.add_edge(valhalla_edge);
-    }
-    
-    // Convert additional data
-    // ...
-    
-    Ok(valhalla_tile)
-}
-```
+Upon successful completion of Phase 1, the following next steps are recommended:
 
-### D.2 OSRM Integration
-
-```rust
-fn convert_to_osrm(tiles: &[OvertureGraphTile]) -> Result<OSRMData, Error> {
-    let mut osrm_data = OSRMData::new();
-    
-    // Convert nodes
-    for tile in tiles {
-        for node in &tile.nodes {
-            let osrm_node = convert_node_to_osrm(node);
-            osrm_data.add_node(osrm_node);
-        }
-    }
-    
-    // Convert edges
-    for tile in tiles {
-        for edge in &tile.directed_edges {
-            let osrm_edge = convert_edge_to_osrm(edge);
-            osrm_data.add_edge(osrm_edge);
-        }
-    }
-    
-    // Build OSRM hierarchy
-    osrm_data.build_hierarchy();
-    
-    Ok(osrm_data)
-}
-```
-
-### D.3 GraphHopper Integration
-
-```rust
-fn convert_to_graphhopper(tiles: &[OvertureGraphTile]) -> Result<GraphHopperData, Error> {
-    let mut gh_data = GraphHopperData::new();
-    
-    // Convert nodes and edges
-    for tile in tiles {
-        for node in &tile.nodes {
-            gh_data.add_node(convert_node_to_gh(node));
-        }
-        
-        for edge in &tile.directed_edges {
-            gh_data.add_edge(convert_edge_to_gh(edge));
-        }
-    }
-    
-    // Build GraphHopper specific structures
-    gh_data.build_index();
-    
-    Ok(gh_data)
-}
-```
-
-## Appendix E: Testing and Validation
-
-### E.1 Unit Testing
-
-```rust
-#[test]
-fn test_segment_to_way_conversion() {
-    let segment = Segment {
-        id: "123".to_string(),
-        geometry: LineString::new(vec![
-            Coordinate { x: -122.4194, y: 37.7749 },
-            Coordinate { x: -122.4195, y: 37.7750 },
-        ]),
-        properties: SegmentProperties {
-            class: "motorway".to_string(),
-            // Other properties...
-        },
-    };
-    
-    let way = OSMWay::from_overture_segment(&segment);
-    
-    assert_eq!(way.osmwayid, 123);
-    assert_eq!(way.road_class, RoadClass::Motorway as u8);
-    // Additional assertions...
-}
-```
-
-### E.2 Integration Testing
-
-```rust
-#[test]
-fn test_end_to_end_tile_creation() {
-    // Create temporary directory for test
-    let temp_dir = TempDir::new().unwrap();
-    let output_path = temp_dir.path().join("test_tile");
-    
-    // Process test data
-    let result = process_overture_data(
-        "test_data/sample.parquet",
-        output_path.to_str().unwrap(),
-    );
-    
-    assert!(result.is_ok());
-    
-    // Verify tile was created
-    let tile_path = output_path.join("0/0/0.tile");
-    assert!(tile_path.exists());
-    
-    // Load and verify tile contents
-    let tile = GraphTile::load(tile_path).unwrap();
-    assert!(tile.nodes.len() > 0);
-    assert!(tile.directed_edges.len() > 0);
-}
-```
-
-### E.3 Routing Validation
-
-```rust
-#[test]
-fn test_routing_results() {
-    let router = OvertureRouter::new("test_data/tiles");
-    
-    // Define test cases with known results
-    let test_cases = vec![
-        (
-            LatLng { lat: 37.7749, lng: -122.4194 },
-            LatLng { lat: 37.7833, lng: -122.4167 },
-            RouteExpectation {
-                max_distance_meters: 2000.0,
-                min_distance_meters: 1800.0,
-                expected_road_classes: vec![RoadClass::Arterial, RoadClass::Residential],
-            },
-        ),
-        // Additional test cases...
-    ];
-    
-    for (start, end, expectation) in test_cases {
-        let route = router.route(start, end).unwrap();
-        
-        assert!(route.distance >= expectation.min_distance_meters);
-        assert!(route.distance <= expectation.max_distance_meters);
-        
-        // Verify road classes used
-        for road_class in expectation.expected_road_classes {
-            assert!(route.edges.iter().any(|e| e.road_class == road_class));
-        }
-    }
-}
-```
+1. Gather user feedback on the initial implementation
+2. Begin research for Phase 2 (Direct Integration)
+3. Identify opportunities for performance optimization
+4. Explore support for additional Overture data attributes
+5. Consider integration with other routing engines
