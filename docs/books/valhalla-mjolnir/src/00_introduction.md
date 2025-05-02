@@ -1,78 +1,108 @@
-# Building Overture Graph Tiles
+# Understanding Valhalla's Mjolnir
 
 ## Introduction
 
-Welcome to "Building Overture Graph Tiles" - a comprehensive guide to creating efficient routing graph tiles using Overture Maps Foundation data. This book explores the journey from raw map data to a sophisticated routing graph, with a particular focus on understanding and adapting Valhalla's Mjolnir tile builder for Overture data.
+Welcome to "Understanding Valhalla's Mjolnir" - a comprehensive guide to the graph tile building system at the heart of the Valhalla routing engine. This book aims to demystify how Valhalla transforms raw map data into a sophisticated routing graph, providing insights for developers working with routing systems.
 
-### Why Graph Tiles Matter
+### What is Mjolnir?
 
-Routing is a fundamental component of modern mapping applications. Whether you're finding your way to a new restaurant, planning a cross-country road trip, or optimizing delivery routes, efficient routing algorithms are essential. At the heart of these algorithms lies a critical data structure: the routing graph.
-
-Graph tiles represent a sophisticated approach to managing routing data. By dividing the world into a hierarchical system of tiles, we can:
-
-- Process and update specific geographic regions independently
-- Load only the necessary data into memory during routing
-- Enable efficient path finding across continental-scale networks
-- Support multiple transportation modes with different routing characteristics
-
-### The Overture Maps Foundation Challenge
-
-The [Overture Maps Foundation](https://overturemaps.org/) provides rich, standardized geospatial data with several advantages over traditional sources:
-
-- A normalized schema with consistent attributes
-- First-class topological nodes that explicitly define network connectivity
-- Comprehensive properties for accurate routing decisions
-- Standard formats like GeoParquet for efficient processing
-
-However, to use this data for routing, we need to transform it into a format that routing engines can understand. This is where graph tiles come in.
-
-### Our Journey Through This Book
-
-This book is organized into two main sections:
-
-1. **Understanding Valhalla's Mjolnir**: A deep dive into how Valhalla's graph tile builder works, exploring its architecture, algorithms, and data structures. This knowledge is essential for anyone looking to adapt or extend Valhalla for use with Overture data.
-
-2. **Building Overture Graph Tiles**: Practical guidance on creating graph tiles from Overture data, including integration approaches, attribute mapping, and optimization techniques.
+In Norse mythology, Mjolnir is Thor's hammer - a powerful tool capable of leveling mountains. Similarly, Valhalla's Mjolnir component is a powerful tool that transforms the raw landscape of geographic data into structured, navigable graph tiles.
 
 ```mermaid
-flowchart TD
-    A[Overture Maps Data] --> B[Data Processing]
-    B --> C[Graph Construction]
-    C --> D[Tile Creation]
-    D --> E[Routing Graph]
+flowchart LR
+    A[Raw Map Data] --> B[Mjolnir]
+    B --> C[Graph Tiles]
+    C --> D[Routing Engine]
     
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style E fill:#bbf,stroke:#333,stroke-width:2px
+    style B fill:#f96,stroke:#333,stroke-width:2px
 ```
+
+Mjolnir is responsible for:
+- Parsing OpenStreetMap (OSM) data
+- Extracting road networks and other transportation features
+- Building a hierarchical graph structure
+- Creating optimized tiles for efficient routing
+
+Understanding Mjolnir is valuable for anyone looking to:
+- Customize Valhalla for specific routing needs
+- Integrate different data sources with Valhalla
+- Build their own graph tile system
+- Understand how modern routing engines work
+
+### The Power of Graph Tiles
+
+At the core of Valhalla's design is the concept of graph tiles - a way of dividing the world into manageable chunks for routing. This approach offers several advantages:
+
+1. **Memory Efficiency**: Only load the tiles needed for a specific route
+2. **Parallelization**: Process tiles independently for faster computation
+3. **Incremental Updates**: Update only the tiles that have changed
+4. **Hierarchical Routing**: Use different levels of detail for different parts of a route
+
+```mermaid
+graph TD
+    subgraph "World Map"
+        T1[Tile 1] --- T2[Tile 2] --- T3[Tile 3]
+        T4[Tile 4] --- T5[Tile 5] --- T6[Tile 6]
+        T7[Tile 7] --- T8[Tile 8] --- T9[Tile 9]
+        
+        T1 --- T4
+        T2 --- T5
+        T3 --- T6
+        T4 --- T7
+        T5 --- T8
+        T6 --- T9
+        
+        style T2 fill:#bbf,stroke:#333
+        style T5 fill:#bbf,stroke:#333
+        style T6 fill:#bbf,stroke:#333
+    end
+    
+    subgraph "Route Calculation"
+        R[Only relevant tiles loaded]
+    end
+    
+    T2 --> R
+    T5 --> R
+    T6 --> R
+```
+
+### How This Book is Organized
+
+This book takes you on a journey through Mjolnir's architecture and processes:
+
+1. **Valhalla's Tiled Structure**: Understanding the fundamental concept of graph tiles
+2. **OSM Data Processing**: How Mjolnir reads and interprets OpenStreetMap data
+3. **Graph Construction**: The process of building a routable graph from raw data
+4. **Core Data Structures**: The key components that make up the graph
+5. **Tile Creation**: How tiles are generated and managed
+6. **Hierarchical Graph Building**: Creating multiple levels for efficient routing
+7. **Costing and Edge Attribution**: How road properties affect routing decisions
+8. **Special Cases**: Handling complex scenarios like turn restrictions and transit
+9. **Binary Tile Format**: How graph data is stored efficiently on disk
+10. **Building Your Own**: Guidelines for creating custom graph tile builders
+
+Each chapter combines conceptual explanations with practical code examples from Valhalla's codebase, helping you understand both the theory and implementation.
 
 ### Who This Book Is For
 
 This book is designed for:
 
-- **Developers** working with routing engines and geospatial data
-- **Data scientists** exploring transportation network analysis
-- **GIS specialists** interested in advanced routing applications
-- **Contributors** to the Overture Maps Foundation ecosystem
+- **Developers** working with Valhalla or other routing engines
+- **GIS specialists** interested in routing technology
+- **Data scientists** working with transportation networks
+- **Anyone** curious about how modern routing systems work
 
-Whether you're familiar with Valhalla or completely new to routing engines, this book provides the context and details you need to understand graph tile creation and use Overture data effectively.
+While some familiarity with C++ and graph theory is helpful, we've tried to make the content accessible by focusing on concepts and providing clear explanations of the code.
 
-### Prerequisites
+### Why Understanding Mjolnir Matters
 
-While we've tried to make this book accessible to a wide audience, some familiarity with the following concepts will be helpful:
+Mjolnir represents years of engineering experience in solving the complex problem of efficient routing at scale. By understanding its design and implementation, you gain insights into:
 
-- Basic graph theory and algorithms
-- Geospatial data formats and concepts
-- Programming experience (C++ examples are used, but concepts apply to any language)
-- Understanding of transportation networks
+- Efficient processing of large geospatial datasets
+- Graph algorithms for transportation networks
+- Memory-efficient data structures for routing
+- Balancing preprocessing complexity with query performance
 
-### How to Use This Book
+Whether you're using Valhalla as-is, extending it for custom needs, or building your own routing system, the knowledge in this book will help you make informed decisions and avoid common pitfalls.
 
-This book can be read sequentially or used as a reference. Each chapter builds on previous concepts but also stands on its own for those interested in specific topics.
-
-- If you're new to routing and graph tiles, start from the beginning
-- If you're familiar with routing but new to Valhalla, focus on the Mjolnir chapters
-- If you're experienced with Valhalla and want to use Overture data, jump to the Overture-specific sections
-
-Code examples and diagrams are provided throughout to illustrate key concepts, but the focus is on understanding the underlying principles rather than memorizing implementation details.
-
-Let's begin our journey into the fascinating world of graph tiles and routing!
+Let's begin our exploration of Valhalla's Mjolnir!
