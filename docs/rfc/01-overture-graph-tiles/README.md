@@ -107,11 +107,6 @@ flowchart LR
     style C fill:#69f,stroke:#333,stroke-width:1px
     style D fill:#6c6,stroke:#333,stroke-width:1px
 ```
-│  Overture   │     │  Rust-based   │     │  Valhalla     │     │  Routing      │
-│  Data       │────▶│  Transcoder   │────▶│  Tile Builder │────▶│  Engine       │
-│ (GeoParquet)│     │               │     │               │     │               │
-└─────────────┘     └───────────────┘     └───────────────┘     └───────────────┘
-```
 
 The key insight from our research is that we don't need to modify Valhalla's entire pipeline. Instead, we can:
 
@@ -210,13 +205,6 @@ flowchart TD
     B --> C4
     B --> C5
     B --> C6
-```
-│ road_class_: kMotorway                                  │
-│ speed_: 100                                             │
-│ forward_access_: kAllAccess                             │
-│ backward_access_: kAllAccess                            │
-│ ...                                                     │
-└─────────────────────────────────────────────────────────┘
 ```
 
 #### Road Classification Mapping
@@ -454,38 +442,6 @@ classDiagram
     OvertureGraphTile --> DirectedEdge
     OvertureGraphTile --> EdgeAttribute
     OvertureGraphTile --> AdminInfo
-```
-│  - Creation Date                                        │
-├─────────────────────────────────────────────────────────┤
-│ Nodes                                                   │
-│  - Node ID                                              │
-│  - Location                                             │
-│  - Type                                                 │
-│  - Access                                               │
-│  - Edge Index                                           │
-├─────────────────────────────────────────────────────────┤
-│ Directed Edges                                          │
-│  - Edge ID                                              │
-│  - Start Node                                           │
-│  - End Node                                             │
-│  - Length                                               │
-│  - Speed                                                │
-│  - Access                                               │
-│  - Classification                                       │
-│  - Attributes Index                                     │
-├─────────────────────────────────────────────────────────┤
-│ Edge Attributes                                         │
-│  - Names                                                │
-│  - Shape Points                                         │
-│  - Lane Information                                     │
-│  - Turn Restrictions                                    │
-│  - Traffic Data                                         │
-├─────────────────────────────────────────────────────────┤
-│ Administrative Information                              │
-│  - Boundaries                                           │
-│  - Countries                                            │
-│  - Regions                                              │
-└─────────────────────────────────────────────────────────┘
 ```
 
 #### Routing Engine Integration
