@@ -105,3 +105,9 @@ dist
 
 # Generated book files from mdbook
 **/docs/books/**/book/
+
+# Git submodule content
+context/overture-schema/
+
+# Temporary files
+commit_message.txt

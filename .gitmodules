@@ -1,0 +1,3 @@
+[submodule "context/overture-schema"]
+	path = context/overture-schema
+	url = https://github.com/OvertureMaps/schema.git
