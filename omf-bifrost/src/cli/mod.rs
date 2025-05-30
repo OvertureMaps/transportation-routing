@@ -113,7 +113,7 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
                 info!("Number of threads: {}", thread_count);
             }
 
-            if let Some(_) = inline_config {
+            if inline_config.is_some() {
                 info!("Using inline configuration");
             }
 
