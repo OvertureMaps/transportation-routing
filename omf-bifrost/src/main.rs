@@ -18,11 +18,15 @@ fn main() -> Result<()> {
 
     info!("Starting omf-bifrost");
 
-    // Run the CLI with the already parsed arguments
-    if let Err(e) = cli::run_with_args(cli) {
-        error!("Error: {}", e);
-        std::process::exit(1);
+    // Run the CLI with the already parsed arguments and match on the result
+    match cli::run_with_args(cli) {
+        Ok(_) => {
+            info!("Operation completed successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("Error: {}", e);
+            std::process::exit(1);
+        }
     }
-
-    Ok(())
 }

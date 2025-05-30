@@ -1,0 +1,92 @@
+# OMF-Bifrost
+
+A tool for converting [Overture Maps Foundation](https://overturemaps.org/) data to [Valhalla](https://github.com/valhalla/valhalla) routing engine format.
+
+## Overview
+
+OMF-Bifrost bridges the gap between Overture Maps Foundation's transportation data and the Valhalla routing engine. It provides a set of tools to convert Overture's GeoParquet data into formats that Valhalla can understand and process.
+
+Named after the rainbow bridge in Norse mythology that connects Midgard (Earth) to Asgard (realm of the gods), Bifrost symbolizes the connection between two powerful systems: Overture's comprehensive global mapping data and Valhalla's efficient routing capabilities.
+
+## Features
+
+- Convert Overture Maps transportation data to Valhalla's binary format
+- Build Valhalla graph tiles directly from Overture data
+- Generate administrative boundary information for Valhalla from Overture data
+- Configurable processing with multi-threading support
+
+## Installation
+
+### Prerequisites
+
+- Rust toolchain (1.70.0 or newer)
+- Cargo package manager
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/OvertureMaps/transportation-routing.git
+cd transportation-routing/omf-bifrost
+
+# Build the project
+cargo build --release
+
+# The binary will be available at target/release/omf-bifrost
+```
+
+## Usage
+
+OMF-Bifrost provides three main commands:
+
+### Build Tiles
+
+Convert Overture Maps data directly to Valhalla graph tiles:
+
+```bash
+omf-bifrost build-tiles --input overture-transportation.parquet --output-dir valhalla_tiles
+```
+
+### Convert
+
+Convert Overture Maps data to Valhalla's binary format:
+
+```bash
+omf-bifrost convert --input overture-transportation.parquet --output-dir valhalla_binary
+```
+
+### Build Administrative Data
+
+Generate administrative boundary information for Valhalla:
+
+```bash
+omf-bifrost build-admins --input overture-admins.parquet --output-dir valhalla_admins
+```
+
+### Additional Options
+
+- Use `-v`, `-vv`, or `-vvv` for increasing verbosity levels
+- Specify `--threads` to control parallel processing
+- Provide custom configuration with `--config` or `--inline-config`
+
+For detailed help on each command:
+
+```bash
+omf-bifrost --help
+omf-bifrost build-tiles --help
+omf-bifrost convert --help
+omf-bifrost build-admins --help
+```
+
+## Development
+
+See [DEVELOP.md](DEVELOP.md) for information on contributing to the project, development workflows, and build scripts.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Acknowledgments
+
+- [Overture Maps Foundation](https://overturemaps.org/) for providing the open map data
+- [Valhalla](https://github.com/valhalla/valhalla) routing engine project
