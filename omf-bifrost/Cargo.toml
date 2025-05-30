@@ -1,0 +1,51 @@
+[package]
+name = "omf-bifrost"
+version = "0.1.0"
+edition = "2024"
+description = "A transcoder for Overture Maps Foundation transportation data to Valhalla routing tiles"
+authors = ["Swagata Prateek <pswagata@amazon.com>", "Overture Maps Foundation"]
+license = "MIT"
+readme = "README.md"
+keywords = ["overture", "maps", "routing", "valhalla", "transportation"]
+categories = ["command-line-utilities", "data-structures"]
+
+# Keys and their definitions sourced from https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Command line argument parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Error handling
+thiserror = "2.0.12"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11.8"
+
+# Serialization/Deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# GeoParquet reading
+arrow = "55.1.0"
+parquet = "55.1.0"
+
+# Progress reporting
+indicatif = "0.17"
+
+[dev-dependencies]
+# Testing
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"
+
+[profile.release]
+# Makes binaries smaller by removing redundant code
+lto = true
+# By default, Rust uses multiple units for faster compilation. This disables parallel codegen, but it enables
+# more aggressive optimization across your entire codebase
+codegen-units = 1
+opt-level = 3
+# Removes debug symbols and other metadata from the final binary
+strip = true
