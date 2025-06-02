@@ -6,11 +6,11 @@ use std::path::Path;
 fn download_sample_data() -> Result<()> {
     let release_version = "2025-05-21.0";
 
-    // Seattle South Lake Union area bbox coordinates
-    let bbox_xmin = -122.342334;
-    let bbox_xmax = -122.334523;
-    let bbox_ymin = 47.618546;
-    let bbox_ymax = 47.624533;
+    // Seattle South Lake Union and surrounding
+    let bbox_xmin = -122.355509;
+    let bbox_xmax = -122.316885;
+    let bbox_ymin = 47.610561;
+    let bbox_ymax = 47.628727;
 
     println!("Starting sample data download script");
 
