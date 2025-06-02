@@ -40,6 +40,9 @@ assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.8"
 
+# Examples
+duckdb = { version = "1.2.2", features = ["bundled"] }
+
 [profile.release]
 # Makes binaries smaller by removing redundant code
 lto = true
@@ -49,3 +52,6 @@ codegen-units = 1
 opt-level = 3
 # Removes debug symbols and other metadata from the final binary
 strip = true
+
+[[example]]
+name = "download"

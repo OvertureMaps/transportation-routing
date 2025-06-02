@@ -85,9 +85,8 @@ cargo build
 # Run tests
 cargo test
 
-# Download sample data (using curl)
-mkdir -p data
-curl -L "https://overturemaps.org/download/example-data.parquet" -o "data/example-data.parquet"
+# Download sample data
+cargo run --example download
 
 # Run the application
 cargo run -- build-tiles --input data/example-data.parquet --output-dir output/tiles
@@ -230,8 +229,7 @@ For development and testing, you can use sample data:
 just download-data
 
 # Or manually
-mkdir -p data
-curl -L "https://overturemaps.org/download/example-data.parquet" -o "data/example-data.parquet"
+cargo run --example download
 ```
 
 ## Valhalla Integration
