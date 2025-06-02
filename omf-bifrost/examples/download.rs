@@ -39,8 +39,10 @@ fn download_sample_data() -> Result<()> {
             SELECT * 
             FROM read_parquet('s3://overturemaps-us-west-2/release/{}/theme=transportation/type=*/*', filename=true, hive_partitioning=1)
             WHERE
-                bbox.xmin BETWEEN {} AND {}
-                AND bbox.ymin BETWEEN {} AND {}
+                bbox.xmin >= {}
+                AND bbox.xmax <= {}
+                AND bbox.ymin >= {}
+                AND bbox.ymax <= {}
         ) TO '{}' (FORMAT PARQUET);
         ",
         release_version, bbox_xmin, bbox_xmax, bbox_ymin, bbox_ymax, output_path
