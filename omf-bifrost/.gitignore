@@ -1,0 +1,10 @@
+# Rust specific ignores
+/target/
+**/*.rs.bk
+Cargo.lock
+.cargo-ok
+/.cargo/config.toml
+
+# Data files
+*.parquet
+!/tests/data/*.parquet

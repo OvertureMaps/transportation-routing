@@ -12,7 +12,7 @@ Named after the rainbow bridge in Norse mythology that connects Midgard (Earth) 
 
 - Convert Overture Maps transportation data to Valhalla's binary format
 - Build Valhalla graph tiles directly from Overture data
-- Generate administrative boundary information for Valhalla from Overture data
+- Generate administrative boundary information for Valhalla from Overture Divisions data
 - Configurable processing with multi-threading support
 
 ## Installation
@@ -55,13 +55,49 @@ Convert Overture Maps data to Valhalla's binary format:
 omf-bifrost convert --input overture-transportation.parquet --output-dir valhalla_binary
 ```
 
-### Build Administrative Data
+### Building Administrative Boundaries
 
-Generate administrative boundary information for Valhalla:
+The `build-admins` command processes Overture Divisions data into the format required by Valhalla:
 
 ```bash
-omf-bifrost build-admins --input overture-admins.parquet --output-dir valhalla_admins
+omf-bifrost build-admins \
+  --divisions overture-divisions.parquet \
+  --division-areas overture-division-areas.parquet \
+  --output-dir valhalla_admin_boundaries
 ```
+
+This creates a SQLite database ready for use by Valhalla.
+
+#### Customizing Administrative Boundary Processing
+
+By default, `build-admins` uses built-in settings. For more control—such as overriding access rules—use a configuration file. Start by generating the default config:
+
+```bash
+omf-bifrost generate-admin-config --output admin-config.json
+```
+
+Edit `admin-config.json` as needed, then supply it back to `build-admins`:
+
+```bash
+omf-bifrost build-admins \
+  --config admin-config.json \
+  --divisions overture-divisions.parquet \
+  --division-areas overture-division-areas.parquet \
+  --output-dir valhalla_admins
+```
+
+#### Example: Using Sample Data
+
+Try building the administrative boundaries table from provided sample datasets:
+
+```bash
+omf-bifrost build-admins \
+  --divisions tests/data/wa-divisions.parquet \
+  --division-areas tests/data/wa-division-areas.parquet \
+  --output-dir examples/
+```
+
+This creates `examples/admins.sqlite`, which you can inspect or use further for building tiles.
 
 ### Additional Options
 

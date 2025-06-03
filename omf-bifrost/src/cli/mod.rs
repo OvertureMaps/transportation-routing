@@ -1,11 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-#[cfg(not(feature = "download"))]
-use log::error;
 use log::{debug, info};
-#[cfg(feature = "download")]
 use std::fs;
-#[cfg(feature = "download")]
 use std::path::Path;
 
 #[derive(Parser, Debug)]
@@ -68,10 +64,14 @@ enum Commands {
     },
     /// Build administrative data from Overture Maps data
     BuildAdmins {
-        /// Input GeoParquet file containing Overture Maps administrative boundary data
-        /// Should include polygons defining administrative areas with their hierarchy
-        #[arg(short, long)]
-        input: String,
+        /// Input GeoParquet file containing Overture Maps admin division definitions
+        #[arg(short = 'd', long)]
+        divisions: String,
+
+        /// Input GeoParquet file with areas for Overture Maps administrative divisions
+        /// Should include boundaries and attributes for administrative divisions (e.g., countries, states)
+        #[arg(short = 'a', long)]
+        division_areas: String,
 
         /// Directory where the resulting administrative database will be written
         /// Will contain files needed for administrative lookups during routing
@@ -83,6 +83,12 @@ enum Commands {
         #[arg(short, long)]
         config: Option<String>,
     },
+    /// Generate the default admin config for customization
+    GenerateAdminConfig {
+        /// Output path for config JSON
+        #[arg(short, long)]
+        output: String,
+    },
     /// Download sample Overture Maps transportation data
     Download {
         /// Directory where the downloaded data will be saved
@@ -92,6 +98,40 @@ enum Commands {
         /// Output filename (will be saved as a Parquet file)
         #[arg(long, default_value = "example-data.parquet")]
         output_file: String,
+
+        /// Overture Maps release version
+        #[arg(short, long, default_value = "2025-05-21.0")]
+        release_version: String,
+
+        /// Bounding box minimum longitude
+        #[arg(long, default_value_t = -122.355509)]
+        xmin: f64,
+
+        /// Bounding box maximum longitude
+        #[arg(long, default_value_t = -122.316885)]
+        xmax: f64,
+
+        /// Bounding box minimum latitude
+        #[arg(long, default_value_t = 47.610561)]
+        ymin: f64,
+
+        /// Bounding box maximum latitude
+        #[arg(long, default_value_t = 47.628727)]
+        ymax: f64,
+    },
+    /// Download sample Overture Maps administrative data
+    DownloadAdmin {
+        /// Directory where the downloaded admin data will be saved
+        #[arg(long, default_value = "data")]
+        output_dir: String,
+
+        /// Output filename (will be saved as a Parquet file)
+        #[arg(long, default_value = "example-divisions.parquet")]
+        output_divisions_file: String,
+
+        /// Output filename (will be saved as a Parquet file)
+        #[arg(long, default_value = "example-division-areas.parquet")]
+        output_division_areas_file: String,
 
         /// Overture Maps release version
         #[arg(short, long, default_value = "2025-05-21.0")]
@@ -173,20 +213,28 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
             info!("Conversion not yet implemented");
         }
         Commands::BuildAdmins {
-            input,
+            divisions,
+            division_areas,
             output_dir,
             config,
         } => {
             info!("Building administrative data from Overture Maps data");
-            info!("Input: {}", input);
+            info!("Input: {}; {}", divisions, division_areas);
             info!("Output directory: {}", output_dir);
 
-            if let Some(config_path) = config {
-                info!("Using configuration file: {}", config_path);
-            }
-
-            // TODO: Implement actual admin building logic
-            info!("Admin building not yet implemented");
+            let admin_config = crate::admin::load_admin_config(config.as_deref())?;
+            let sqlite_path = format!("{}/admin.sqlite", output_dir);
+            crate::admin::build_admins_from_geo_parquet(
+                divisions,
+                division_areas,
+                &sqlite_path,
+                &admin_config,
+            )?;
+            info!("Admin building complete, db at {}", sqlite_path);
+        }
+        Commands::GenerateAdminConfig { output } => {
+            crate::admin::save_default_admin_config(output)?;
+            info!("Default admin config written to {}", output);
         }
         Commands::Download {
             output_dir,
@@ -202,31 +250,62 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
             info!("Bounding box: ({}, {}) to ({}, {})", xmin, ymin, xmax, ymax);
             info!("Output path: {}/{}", output_dir, output_file);
 
-            #[cfg(feature = "download")]
+            // Create output directory if it doesn't exist
+            let output_path = Path::new(output_dir).join(output_file);
+            if !Path::new(output_dir).exists() {
+                fs::create_dir_all(output_dir)?;
+            }
+
+            // Use duckdb to download the data
+            crate::utils::download::download_overture_data(
+                release_version,
+                *xmin,
+                *xmax,
+                *ymin,
+                *ymax,
+                &output_path.to_string_lossy(),
+            )?;
+
+            info!("Download complete! Data saved to {}", output_path.display());
+        }
+        Commands::DownloadAdmin {
+            output_dir,
+            output_divisions_file,
+            output_division_areas_file,
+            release_version,
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+        } => {
+            info!("Downloading Overture Maps admin divisions data");
+            info!("Release version: {}", release_version);
+            info!("Bounding box: ({}, {}) to ({}, {})", xmin, ymin, xmax, ymax);
+            info!("Output path: {}", output_dir);
+            info!("Output divisions file: {}", output_divisions_file);
+            info!("Output division areas file: {}", output_division_areas_file);
+
             {
-                // Create output directory if it doesn't exist
-                let output_path = Path::new(output_dir).join(output_file);
+                let output_divisions_path = Path::new(output_dir).join(output_divisions_file);
+                let output_division_areas_path =
+                    Path::new(output_dir).join(output_division_areas_file);
                 if !Path::new(output_dir).exists() {
                     fs::create_dir_all(output_dir)?;
                 }
-
-                // Use duckdb to download the data
-                crate::utils::download::download_overture_data(
+                crate::utils::download::download_overture_admins(
                     release_version,
                     *xmin,
                     *xmax,
                     *ymin,
                     *ymax,
-                    &output_path.to_string_lossy(),
+                    &output_divisions_path.to_string_lossy(),
+                    &output_division_areas_path.to_string_lossy(),
                 )?;
-
-                info!("Download complete! Data saved to {}", output_path.display());
-            }
-
-            #[cfg(not(feature = "download"))]
-            {
-                error!("Download feature is not enabled in this build.");
-                error!("To use this feature, rebuild with: cargo build --features download");
+                info!(
+                    "Admin downloads complete! Divisions: {}, Areas: {}",
+                    output_divisions_path.display(),
+                    output_division_areas_path.display()
+                );
             }
         }
     }
