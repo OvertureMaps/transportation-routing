@@ -79,7 +79,7 @@ setup-dirs:
 
 # Download sample Overture Maps data for testing
 download-data: setup-dirs
-    cargo run --example download
+    cargo run --features download -- -v download
 
 # Build tiles from sample data
 build-tiles: build download-data

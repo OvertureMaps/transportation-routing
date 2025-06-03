@@ -86,7 +86,7 @@ cargo build
 cargo test
 
 # Download sample data
-cargo run --example download
+cargo run --features download -- -v download
 
 # Run the application
 cargo run -- build-tiles --input data/example-data.parquet --output-dir output/tiles
@@ -229,7 +229,7 @@ For development and testing, you can use sample data:
 just download-data
 
 # Or manually
-cargo run --example download
+cargo run --features download -- -v download
 ```
 
 ## Valhalla Integration
