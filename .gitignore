@@ -125,3 +125,6 @@ Cargo.lock
 *.swo
 .DS_Store
 *~
+
+# Data files
+*.parquet

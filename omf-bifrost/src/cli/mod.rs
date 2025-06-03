@@ -1,6 +1,12 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+#[cfg(not(feature = "download"))]
+use log::error;
 use log::{debug, info};
+#[cfg(feature = "download")]
+use std::fs;
+#[cfg(feature = "download")]
+use std::path::Path;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -77,6 +83,36 @@ enum Commands {
         #[arg(short, long)]
         config: Option<String>,
     },
+    /// Download sample Overture Maps transportation data
+    Download {
+        /// Directory where the downloaded data will be saved
+        #[arg(long, default_value = "data")]
+        output_dir: String,
+
+        /// Output filename (will be saved as a Parquet file)
+        #[arg(long, default_value = "example-data.parquet")]
+        output_file: String,
+
+        /// Overture Maps release version
+        #[arg(short, long, default_value = "2025-05-21.0")]
+        release_version: String,
+
+        /// Bounding box minimum longitude
+        #[arg(long, default_value_t = -122.355509)]
+        xmin: f64,
+
+        /// Bounding box maximum longitude
+        #[arg(long, default_value_t = -122.316885)]
+        xmax: f64,
+
+        /// Bounding box minimum latitude
+        #[arg(long, default_value_t = 47.610561)]
+        ymin: f64,
+
+        /// Bounding box maximum latitude
+        #[arg(long, default_value_t = 47.628727)]
+        ymax: f64,
+    },
 }
 
 /// Parse command line arguments
@@ -151,6 +187,47 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
 
             // TODO: Implement actual admin building logic
             info!("Admin building not yet implemented");
+        }
+        Commands::Download {
+            output_dir,
+            output_file,
+            release_version,
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+        } => {
+            info!("Downloading Overture Maps transportation data");
+            info!("Release version: {}", release_version);
+            info!("Bounding box: ({}, {}) to ({}, {})", xmin, ymin, xmax, ymax);
+            info!("Output path: {}/{}", output_dir, output_file);
+
+            #[cfg(feature = "download")]
+            {
+                // Create output directory if it doesn't exist
+                let output_path = Path::new(output_dir).join(output_file);
+                if !Path::new(output_dir).exists() {
+                    fs::create_dir_all(output_dir)?;
+                }
+
+                // Use duckdb to download the data
+                crate::utils::download::download_overture_data(
+                    release_version,
+                    *xmin,
+                    *xmax,
+                    *ymin,
+                    *ymax,
+                    &output_path.to_string_lossy(),
+                )?;
+
+                info!("Download complete! Data saved to {}", output_path.display());
+            }
+
+            #[cfg(not(feature = "download"))]
+            {
+                error!("Download feature is not enabled in this build.");
+                error!("To use this feature, rebuild with: cargo build --features download");
+            }
         }
     }
 

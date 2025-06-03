@@ -79,11 +79,7 @@ setup-dirs:
 
 # Download sample Overture Maps data for testing
 download-data: setup-dirs
-    @echo "Downloading Overture Maps sample data..."
-    @# Replace this URL with the actual sample data URL when available
-    @echo "Note: This is a placeholder. Replace with actual download URL."
-    @# curl -L "https://overturemaps.org/download/example-data.parquet" -o "data/example-data.parquet"
-    @echo "Sample data would be downloaded to data/example-data.parquet"
+    cargo run --features download -- -v download
 
 # Build tiles from sample data
 build-tiles: build download-data
