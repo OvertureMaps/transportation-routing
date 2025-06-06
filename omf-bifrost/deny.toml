@@ -1,0 +1,34 @@
+# This file configures cargo-deny for license compliance and dependency checks
+# See https://embarkstudios.github.io/cargo-deny/index.html for documentation
+
+[licenses]
+# Allowed licenses in SPDX format
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "Zlib",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+]
+
+# We want really high confidence when inferring licenses from text
+confidence-threshold = 0.93
+
+[bans]
+# Warn for multiple versions of the same crate
+multiple-versions = "warn"
+
+[sources]
+# Only allow crates from crates.io
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[advisories]
+ignore = [
+    # Ignore the paste unmaintained warning for now as it's a transitive dependency
+    "RUSTSEC-2024-0436",
+]

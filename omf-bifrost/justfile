@@ -1,0 +1,118 @@
+# OMF-Bifrost build tasks
+# Run with 'just <task>' (requires 'just' to be installed: cargo install just)
+
+# List available commands
+default:
+    @just --list
+
+# Build the project
+build:
+    cargo build
+
+# Install development tools
+install-tools:
+    @echo "Installing development tools..."
+    @command -v cargo-audit >/dev/null 2>&1 || cargo install cargo-audit
+    @command -v cargo-deny >/dev/null 2>&1 || cargo install cargo-deny
+    @command -v cargo-outdated >/dev/null 2>&1 || cargo install cargo-outdated
+    @command -v cargo-udeps >/dev/null 2>&1 || cargo install cargo-udeps --locked
+    @echo "Tools installed successfully!"
+
+# Run all checks before release
+release-check: check
+    @echo "Running security audit..."
+    cargo audit || echo "Warning: Security audit found issues"
+    @echo "Checking dependency policies..."
+    cargo deny check || echo "Warning: Dependency policy check found issues"
+    @echo "Checking for outdated dependencies..."
+    cargo outdated || echo "Warning: Outdated dependencies found"
+    @echo "Checking for unused dependencies..."
+    cargo +nightly udeps || echo "Warning: Unused dependencies found"
+    @echo "All release checks completed!"
+
+# Build in release mode with all checks
+release: release-check
+    cargo build --release
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Run tests
+test:
+    cargo test
+
+# Run with verbose logging
+run *ARGS:
+    cargo run -- -vv {{ARGS}}
+
+# Format code
+fmt:
+    cargo fmt
+
+# Check formatting without modifying files
+fmt-check:
+    cargo fmt -- --check
+
+# Format and then build
+build-fmt: fmt
+    cargo build
+
+# Run clippy for static code analysis
+lint:
+    cargo clippy -- -D warnings
+
+# Run clippy with fixes applied where possible
+lint-fix:
+    cargo clippy --fix -- -D warnings
+
+# Check code with clippy and formatting
+check: fmt-check lint
+    @echo "All checks passed!"
+
+# Create directories for data and output
+setup-dirs:
+    mkdir -p data
+    mkdir -p output/tiles
+    mkdir -p output/binary
+    mkdir -p output/admins
+
+# Download sample Overture Maps data for testing
+download-data: setup-dirs
+    cargo run --features download -- -v download
+
+# Build tiles from sample data
+build-tiles: build download-data
+    @echo "Building tiles from sample data..."
+    cargo run -- build-tiles --input data/example-data.parquet --output-dir output/tiles
+
+# Convert sample data to Valhalla binary format
+convert: build download-data
+    @echo "Converting sample data to Valhalla binary format..."
+    cargo run -- convert --input data/example-data.parquet --output-dir output/binary
+
+# Build admin data from sample data
+build-admins: build download-data
+    @echo "Building admin data from sample data..."
+    cargo run -- build-admins --input data/example-data.parquet --output-dir output/admins
+
+# Run all processing tasks
+all: build-tiles convert build-admins
+    @echo "All processing tasks completed!"
+
+# Watch for file changes and rebuild
+watch:
+    cargo watch -x build
+
+# Run with specific verbosity level
+run-quiet *ARGS:
+    cargo run -- {{ARGS}}
+
+run-info *ARGS:
+    cargo run -- -v {{ARGS}}
+
+run-debug *ARGS:
+    cargo run -- -vv {{ARGS}}
+
+run-trace *ARGS:
+    cargo run -- -vvv {{ARGS}}
