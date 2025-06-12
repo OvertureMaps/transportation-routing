@@ -93,7 +93,7 @@ CREATE TABLE admins (
 | None of the above                                                                                       | Skip                                              |
 
 **Note:**
-- "special-exception-list" for admin_level 3 are special French overseas regions and others explicitly listed.
+- "special-exception-list" are French overseas, GB constituent countries, disputed regions and others explicitly listed.
 ---
 
 **admin_access table**
@@ -120,23 +120,26 @@ CREATE TABLE admin_access (
 ## Data Transformation Steps
 
 1. Download Overture `division` and `division_area` GeoParquet dataset.
-   - (optional) Download only areas overlapping your region of interest to reduce size
+    - (optional) Download only areas overlapping your region of interest to reduce size
 2. Use DuckDB to filter and extract relevant records:
-   - Filter by `is_land = TRUE` to exclude water bodies.
-   - Select only the required columns: `id`, `division_id`, `subtype`, `country`, `region`, `names`, `parent_division_id`, and the geometry.
-   - Convert geometries to WKT MULTIPOLYGON format using `ST_AsText(geometry)`.
+    - Filter by `is_land = TRUE` to exclude water bodies.
+    - Select only the required columns: `id`, `division_id`, `subtype`, `country`, `region`, `names`, `parent_division_id`, and the geometry.
+    - Convert geometries to WKT MULTIPOLYGON format using `ST_AsText(geometry)`.
 3. Transform the data to match Valhalla's `admins` table schema:
-   - Map `subtype` to `admin_level`
-   - Use `names["primary"]` as `name`, and `names["common"]["en"]` as `name_en` if available.
-   - Set `drive_on_right` and `allow_intersection_names` based on static configuration.
-   - `default_language` and `supported_languages` keep empty
+    - Map `subtype` to `admin_level`
+    - Use `names["primary"]` as `name`, and `names["common"]["en"]` as `name_en` if available.
+        - Countries (`admin_level` 2): Use `country` (ISO 3166-1 alpha-2 country code).
+        - Regions (`admin_level` 4): Use the subdivision portion of `region` (ISO 3166-2 principal subdivision code).
+    - Set `drive_on_right` based on `division.norms.driving_side`. The value is cascaded down to all subdivisions.
+    - Set `allow_intersection_names` based on static configuration.
+    - `default_language` and `supported_languages` keep empty
 4. Load the transformed data into a Spatialite database:
-   - Create the `admins` table with the required schema.
-   - Insert the transformed records into the `admins` table.
+    - Create the `admins` table with the required schema.
+    - Insert the transformed records into the `admins` table.
 5. Assign `parent_admin` using `parent_division_id`, mapping to the numeric `rowid` in the SQLite/SpatiaLite database.
 6. Validate the data:
-   - Validate special cases and exceptions
-   - Run spatial queries to ensure the geometries are correctly indexed and can be used for lookups.
+    - Validate special cases and exceptions
+    - Run spatial queries to ensure the geometries are correctly indexed and can be used for lookups.
 
 ---
 
@@ -200,7 +203,7 @@ ORDER BY state.name, country.name;
 ## Known Limitations / Issues
 
 - Mapping Overture subtypes to OSM/Valhalla `admin_level` is not 1:1 and must follow Valhalla remapping logic.
-- Some fields (drive side, language) may be missing in Overture and must be filled with Valhalla hardcoded defaults or left NULL.
+- The `allow_intersection_names` is not part of the Overture schema and will be populated using transcoder static configuration.
 - The `default_language` and `supported_languages` columns are not part of the Overture schema (see `division_area.yaml` and related schemas) and will be left blank.
 
 ---
@@ -208,6 +211,6 @@ ORDER BY state.name, country.name;
 ## References
 
 - Valhalla admin table schema & usage: [`adminbuilder.cc`](https://github.com/valhalla/valhalla/blob/93b25cba491b660807e9033b80c23a1a81b3ae0f/src/mjolnir/adminbuilder.cc), [`admin.cc`](https://github.com/valhalla/valhalla/blob/93b25cba491b660807e9033b80c23a1a81b3ae0f/src/mjolnir/admin.cc), [`admin.lua`](https://github.com/valhalla/valhalla/blob/93b25cba491b660807e9033b80c23a1a81b3ae0f/lua/admin.lua)
-- Overture divisions schema: [`divisions](https://github.com/OvertureMaps/schema/tree/7d20936cd1cc4af1a12c867fccd83b0c6f57cfef/schema/divisions)
+- Overture divisions schema: [`divisions`](https://github.com/OvertureMaps/schema/tree/7d20936cd1cc4af1a12c867fccd83b0c6f57cfef/schema/divisions)
 - DuckDB spatial and Parquet reading: https://duckdb.org/docs/extensions/spatial.html
 - Spatialite SQL functions: https://www.gaia-gis.it/fossil/libspatialite/index
