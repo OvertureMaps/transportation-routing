@@ -112,12 +112,6 @@ context/overture-schema/
 # Temporary files
 commit_message.txt
 
-# Rust specific ignores
-**/target/
-**/*.rs.bk
-Cargo.lock
-.cargo-ok
-
 # Editor specific folders
 .idea/
 .vscode/
@@ -125,6 +119,3 @@ Cargo.lock
 *.swo
 .DS_Store
 *~
-
-# Data files
-*.parquet

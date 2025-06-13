@@ -79,7 +79,11 @@ setup-dirs:
 
 # Download sample Overture Maps data for testing
 download-data: setup-dirs
-    cargo run --features download -- -v download
+    cargo run download -- -v download
+
+# Download sample Overture Maps divisions data for testing
+download-admin-data: setup-dirs
+    cargo run -- -v download-admin
 
 # Build tiles from sample data
 build-tiles: build download-data
@@ -92,9 +96,9 @@ convert: build download-data
     cargo run -- convert --input data/example-data.parquet --output-dir output/binary
 
 # Build admin data from sample data
-build-admins: build download-data
+build-admins: build download-admin-data
     @echo "Building admin data from sample data..."
-    cargo run -- build-admins --input data/example-data.parquet --output-dir output/admins
+    cargo run -- -v build-admins -d data/example-divisions.parquet -a data/example-division-areas.parquet -o output/admins
 
 # Run all processing tasks
 all: build-tiles convert build-admins

@@ -10,6 +10,40 @@ This document provides information for developers who want to contribute to or b
 - Cargo package manager
 - Git
 
+### Install dependencies - MacOS
+Install the required dependencies using [Homebrew](https://brew.sh):
+
+```bash
+brew install duckdb sqlite libspatialite
+```
+Note: The default SQLite distribution on macOS has extension loading disabled for security reasons, which is required for SpatiaLite support. You must use a version of SQLite compiled with extension loading enabled.
+
+---
+
+#### MacOS Dynamic Library Path Disclaimer
+
+When install dependencies via Homebrew or they're not in a system default location, the dynamic linker may not be able to find them at build 
+or run time.
+
+Help Cargo and rustc to find native libraries by creating a `.cargo/config.toml` file in the project root with the following content:
+
+**.cargo/config.toml**
+```toml
+[env]
+DUCKDB_LIB_DIR = "/opt/homebrew/lib"
+SQLITE3_LIB_DIR = "/opt/homebrew/opt/sqlite/lib"
+DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
+```
+
+### Install dependencies - Linux
+Install the required dependencies using your package manager. For example, on Ubuntu:
+```bash
+sudo apt-get install libsqlite3-dev libsqlite3-mod-spatialite
+```
+
+#### DuckDB
+Follow the [DuckDB installation guide](https://duckdb.org/docs/installation) for your platform.
+
 ### Optional Tools
 
 - [Just](https://github.com/casey/just) - Command runner for development tasks
@@ -64,14 +98,15 @@ We provide two options for running development tasks:
 
 2. Available commands:
    ```bash
-   just                # Show available commands
-   just build          # Build the project
-   just test           # Run tests
-   just download-data  # Download sample Overture data for testing
-   just build-tiles    # Build tiles from sample data
-   just convert        # Convert sample data to Valhalla binary format
-   just build-admins   # Build admin data from sample data
-   just all            # Run all processing tasks
+   just                     # Show available commands
+   just build               # Build the project
+   just test                # Run tests
+   just download-admin-data # Download sample Overture Maps divisions data for testing
+   just download-data       # Download sample Overture Maps data for testing
+   just build-tiles         # Build tiles from sample data
+   just convert             # Convert sample data to Valhalla binary format
+   just build-admins        # Build admin data from sample data
+   just all                 # Run all processing tasks
    ```
 
 ### Option 2: Using Standard Cargo Commands
@@ -86,12 +121,13 @@ cargo build
 cargo test
 
 # Download sample data
-cargo run --features download -- -v download
+cargo run -- -v download
+cargo run -- -v download-admin
 
 # Run the application
 cargo run -- build-tiles --input data/example-data.parquet --output-dir output/tiles
 cargo run -- convert --input data/example-data.parquet --output-dir output/binary
-cargo run -- build-admins --input data/example-data.parquet --output-dir output/admins
+cargo run -- build-admins -d data/overture-divisions.parquet -a data/overture-division-areas.parquet --output-dir output/admins
 ```
 
 ## Code Quality
@@ -229,7 +265,7 @@ For development and testing, you can use sample data:
 just download-data
 
 # Or manually
-cargo run --features download -- -v download
+cargo run -- -v download
 ```
 
 ## Valhalla Integration
