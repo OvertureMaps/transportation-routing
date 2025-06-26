@@ -104,8 +104,9 @@
     4. kMotorcycleAccess   
 4. Valhalla makes use of bidirectional directed
 edge restrictions by separating them into start\_restriction and
-end\_restriction. The general structure end up looking like this:   
-    ```
+end\_restriction. The general structure end up looking like this:
+
+```
 "edge": {
       "tunnel": false,
 
