@@ -198,11 +198,10 @@ end\_restriction. The general structure end up looking like this:
       },
 ```
 
+    
+- Overture designates travel rules with either a backwards or forwards designation in the when: heading: like so:   
 
-    - Overture designates travel rules
-with either a backwards or forwards designation in the when: heading: like so:   
 
-   
 ```
     {
 "access_type": "denied",
@@ -211,8 +210,8 @@ with either a backwards or forwards designation in the when: heading: like so:
 		}
 	}
 ```
-
-    - For purposes of applying that to bifrost:    
+    
+- For purposes of applying that to bifrost:    
         - Forwards designation will apply to start\_restriction   
         - Backwards designation will apply to end\_restriction   
 5. Speed Limits   
