@@ -97,12 +97,13 @@
             - designated\_bus   
             - designated\_car   
             - designated\_vehicle   
-            - denied\_foot   
-## Future   
-1. kBikeshareAccess   
-2. kTaxiAccess   
-3. kMotor\_scooterAccess   
-4. kMotorcycleAccess   
+            - denied\_foot
+    - Future   
+	- kBikeshareAccess   
+	- kTaxiAccess   
+	- kMotor\_scooterAccess   
+	- kMotorcycleAccess
+   
 ## Valhalla makes use of bidirectional directed
 edge restrictions by separating them into start\_restriction and
 end\_restriction. The general structure end up looking like this:
