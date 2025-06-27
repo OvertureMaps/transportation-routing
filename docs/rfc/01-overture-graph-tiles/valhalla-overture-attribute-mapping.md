@@ -104,9 +104,7 @@
         - kMotor\_scooterAccess   
         - kMotorcycleAccess
    
-## Valhalla makes use of bidirectional directed
-edge restrictions by separating them into start\_restriction and
-end\_restriction. The general structure end up looking like this:
+- Valhalla makes use of bidirectional directed edge restrictions by separating them into start\_restriction and end\_restriction. The general structure end up looking like this:
 
 ```
 "edge": {
