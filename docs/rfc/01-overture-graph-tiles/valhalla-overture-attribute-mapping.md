@@ -1,8 +1,8 @@
-# Bifrost Entity Mapping   
+# Bifrost Attribute Mapping   
 - Author: Rob Haley (rhaley@esri.com)
 - Status: Draft
 - Created: 2025-06-09
-- Last Updated: 2025-06-19
+- Last Updated: 2025-06-27
 1. Road Classification   
     - Valhalla uses road classes for applying routing rules and assigning hierarchy for search. Overture has a class structure that needs to be mapped to the Valhalla road classes. The below table represents a mapping methodology until additional road classes are available.   
         | Overture Class | Valhalla Road Class |
