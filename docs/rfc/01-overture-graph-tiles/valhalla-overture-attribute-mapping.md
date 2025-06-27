@@ -5,29 +5,29 @@
 - Last Updated: 2025-06-27
 ## Road Classification   
 - Valhalla uses road classes for applying routing rules and assigning hierarchy for search. Overture has a class structure that needs to be mapped to the Valhalla road classes. The below table represents a mapping methodology until additional road classes are available.   
-        | Overture Class | Valhalla Road Class |
-        |:---------------|:--------------------|
-        |       motorway |           kMotorway |
-        |          trunk |              kTrunk |
-        |        primary |            kPrimary |
-        |      secondary |          kSecondary |
-        |       tertiary |           kTertiary |
-        |    residential |        kResidential |
-        |   unclassified |       kUnclassified |
-        |        service |     kService\_Other |
-        |     pedestrian |     kService\_Other |
-        |        footway |     kService\_Other |
-        |          alley |     kService\_Other |
-        |      crosswalk |     kService\_Other |
-        |       cycleway |     kService\_Other |
-        |       driveway |     kService\_Other |
-        | living\_street |     kService\_Other |
-        | parking\_asile |     kService\_Other |
-        |           path |     kService\_Other |
-        |       sidewalk |     kService\_Other |
-        |          steps |     kService\_Other |
-        |          track |     kService\_Other |
-        |        unknown |       kUnclassified |
+	        | Overture Class | Valhalla Road Class |
+	        |:---------------|:--------------------|
+	        |       motorway |           kMotorway |
+	        |          trunk |              kTrunk |
+	        |        primary |            kPrimary |
+	        |      secondary |          kSecondary |
+	        |       tertiary |           kTertiary |
+	        |    residential |        kResidential |
+	        |   unclassified |       kUnclassified |
+	        |        service |     kService\_Other |
+	        |     pedestrian |     kService\_Other |
+	        |        footway |     kService\_Other |
+	        |          alley |     kService\_Other |
+	        |      crosswalk |     kService\_Other |
+	        |       cycleway |     kService\_Other |
+	        |       driveway |     kService\_Other |
+	        | living\_street |     kService\_Other |
+	        | parking\_asile |     kService\_Other |
+	        |           path |     kService\_Other |
+	        |       sidewalk |     kService\_Other |
+	        |          steps |     kService\_Other |
+	        |          track |     kService\_Other |
+	        |        unknown |       kUnclassified |
 
 ## Access Restrictions   
 - Access restrictions in Overture currently have a lot of needless complexity. Roads can get one of three assignment types: designated, allowed or denied. Those assignments then get a mode of travel assigned to them. A better long term approach would be for Overture to utilize only the denied assignment and assume all modes of transit are available for any road absent that assignment. That would greatly simplify the structure and reduce all the opportunities for conflict.   
