@@ -31,9 +31,9 @@
 	|        unknown |       kUnclassified |
 
 ## Access Restrictions   
-- Access restrictions in Overture currently have a lot of needless complexity. Roads can get one of three assignment types: designated, allowed or denied. Those assignments then get a mode of travel assigned to them. A better long term approach would be for Overture to utilize only the denied assignment and assume all modes of transit are available for any road absent that assignment. That would greatly simplify the structure and reduce all the opportunities for conflict.   
+- Access restrictions in Overture currently have a lot of needless complexity. Roads can get one of three assignment types: designated, allowed or denied. Those assignments then get a mode of travel assigned to them. A better long term approach would be to revisit the scheme approach in Overture to utilize only the denied assignment and assume all modes of transit are available for any road absent that assignment. That would greatly simplify the structure and reduce all the opportunities for conflict.   
 - Because of the opportunities for conflict, a remaining effort for this document is to resolve conflicts by creating a tiering system.   
-- Currently within Overture there is an innumerable amount combinations of assignments that could come in for a specific extent. A cost of this is that in order to know all the assignments that would need to be supported for a given extent, all the roads must be read in. A simpler approach and a future design clarification should be setting a fixed amount of assignment that should be supported, assigning default values when those are not present and ignoring unsupported values.   
+- Currently within Overture there is an innumerable amount combinations of assignments that could come in for a specific extent. A cost of this is that in order to know all the assignments that would need to be supported for a given extent, all the roads must be read in. A simpler approach and a future design clarification should be setting a fixed amount of assignment that should be supported, assigning default values when those are not present and ignoring unsupported values. That could be done in schema restriction or here although handling it on the data side has downstream benefits for other solutions.
     - kAutoAccess   
         - Is   
             - designated\_motor\_vehicle   
@@ -216,9 +216,32 @@ end\_restriction. The general structure end up looking like this:
     - Forwards designation will apply to start\_restriction   
     - Backwards designation will apply to end\_restriction   
 ## Speed Limits   
-- Work in progress   
+- The existing Valhalla approach to speed is likely viable for this solution. If there is a posted maxspeed attribute, it will be mapped to max_speed. When there is none and the road is classed as highway, then it uses an internal default highway speed. For all other roads it uses a density based approach to determine if it is a rural or urban road and classes a speed based on that.
+- An alternative approach would be to create global averages for the dataset based on road type and fill in nulls based on the road type. This approach has shown to have some good application but rural/urban divides are noticable.
 ## Surface Types   
-- Work in progress   
+- Valhalla uses surface types as a parameter for restricting travel as requested. Below are the Valhalla surface types and the recommended match types from Overture.
+  
+	| Overture Class | Valhalla Road Class |
+	|:---------------|:--------------------|
+	|          metal |        paved_smooth |
+	|          paved |               paved |
+	|         bricks |         paved_rough |
+	|  paving_stones |           compacted |
+	|           dirt |                dirt |
+	|         gravel |              gravel |
+	|   unclassified |                path |
+	|        service |          impassable |
+	|        unknown |                path |
+	|        unpaved |     		  dirt |
+	|        asphalt |               paved |
+	|    cobblestone |           compacted |
+	|           wood |         paved_rough |
+	|         rubber |        paved_smooth |
+	|          tiles |           compacted |
+	|         shells |              gravel |
+	|           rock |              gravel |
+	|     all others |                path |
+
 ## Direction of Travel   
 - Work in progress   
 ## Vehicle Options   
