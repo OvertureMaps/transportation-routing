@@ -271,8 +271,6 @@ For mapping purposes:
     - where there is any  forwards or backwards denied dim of axle_count, the corresponding value in val will get mapped to axle_count
     - where exclude_unpaved, all roads with the tags other than paved, paved_smooth or paved_rough from surface types would get exclude designation here
     - Propose not supporting exclude_cash_only_tolls, include_hov2, include_hov3, hazmat, include_hot, hgv_no_access_penlty,  low_class_penalty, use_truck_route during early releases
-## Special    
-- Work in progress   
 ## Road Types   
 - Valhalla uses a "use" parameter to further apply travel restrictions in a request. The logical mapping from Overture for these parameter types would be from a combination of "class" and "subtype" attributes . With the proposed mapping below, passing in the specified "use" parameter would restrict routing to roads with the matched classification.   
 - Use   
