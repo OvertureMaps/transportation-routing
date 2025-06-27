@@ -244,11 +244,33 @@
 ## Direction of Travel   
 - For any given edge, both directions of travel are assumed to be supported unless explicitly restricted for a given travel mode. 
 ## Vehicle Options   
-- Work in progress   
-    - Height   
-    - Width   
-    - Length   
-    - Weight   
+- Valhalla supports the following restrictions for auto, bus, taxi and truck (not proposing to support taxi currently, atuo = motor_vehicle, truck = hgv and bus = bus in OVerture terms): 
+    - height   
+    - width
+    - exclude_unpaved
+    - exclude_cash_only_tolls
+    - include_hov2
+    - include_hov3
+    - include_hot
+- For trucks (hgv) Valhalla also supports:
+    - length
+    - weight
+    - axle_load
+    - axle_count
+    - hazmat
+    - hgv_no_access_penlty
+    - low_class_penalty
+    - use_truck_route
+For mapping purposes:
+    - in cases where a vehicle type may be specified as a part of the forwards or backwards dimensions/value designation, the vehicle type will be ignored
+    - Valhalla used meters and metric tons by default. When a value is identified, the corresponding unit will need to be indentified and the units will need to be converted
+    - where there is any forwards or backwards denied dim of weight, the corresponding value in val will get mapped to the weight
+    - where there is any  forwards or backwards denied dim of height, the corresponding value in val will get mapped to height
+    - where there is any  forwards or backwards denied dim of length, the corresponding value in val will get mapped to length
+    - where there is any  forwards or backwards denied dim of axle_load, the corresponding value in val will get mapped to axle_load
+    - where there is any  forwards or backwards denied dim of axle_count, the corresponding value in val will get mapped to axle_count
+    - where exclude_unpaved, all roads with the tags other than paved, paved_smooth or paved_rough from surface types would get exclude designation here
+    - Propose not supporting exclude_cash_only_tolls, include_hov2, include_hov3, hazmat, include_hot, hgv_no_access_penlty,  low_class_penalty, use_truck_route during early releases
 ## Special    
 - Work in progress   
 ## Road Types   
