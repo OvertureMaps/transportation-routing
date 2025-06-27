@@ -23,7 +23,7 @@
 	|       cycleway |     kService\_Other |
 	|       driveway |     kService\_Other |
 	| living\_street |     kService\_Other |
-	| parking\_asile |     kService\_Other |
+	| parking\_aisle |     kService\_Other |
 	|           path |     kService\_Other |
 	|       sidewalk |     kService\_Other |
 	|          steps |     kService\_Other |
