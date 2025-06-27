@@ -32,8 +32,8 @@
 
 ## Access Restrictions   
 - Access restrictions in Overture currently have a lot of needless complexity. Roads can get one of three assignment types: designated, allowed or denied. Those assignments then get a mode of travel assigned to them. A better long term approach would be to revisit the scheme approach in Overture to utilize only the denied assignment and assume all modes of transit are available for any road absent that assignment. That would greatly simplify the structure and reduce all the opportunities for conflict.   
-- Because of the opportunities for conflict, a remaining effort for this document is to resolve conflicts by creating a tiering system.   
 - Currently within Overture there is an innumerable amount combinations of assignments that could come in for a specific extent. A cost of this is that in order to know all the assignments that would need to be supported for a given extent, all the roads must be read in. A simpler approach and a future design clarification should be setting a fixed amount of assignment that should be supported, assigning default values when those are not present and ignoring unsupported values. That could be done in schema restriction or here although handling it on the data side has downstream benefits for other solutions.
+- As it currently exists, identifying whether or not a vehicle has access will need to be done through a combination of factors and designated below:
     - kAutoAccess   
         - Is   
             - designated\_motor\_vehicle   
@@ -103,6 +103,10 @@
         - kTaxiAccess   
         - kMotor\_scooterAccess   
         - kMotorcycleAccess
+- Because of the opportunities for conflict, a teiring system needs to exist to break said conflicts. There would be a two teired logic system like follows:
+    - designated > denied > allowed
+    - foot > bicycle > bus > hgv > car > motor_vehicle
+    - As laid out, all designated assignmentments would have first precedent. If there were two deginated assignments, then one example would be foot would get precedent over hgv. 
    
 - Valhalla makes use of bidirectional directed edge restrictions by separating them into start\_restriction and end\_restriction. The general structure end up looking like this:
 
