@@ -242,7 +242,7 @@
 	|     all others |                path |
 
 ## Direction of Travel   
-- Work in progress   
+- For any given edge, both directions of travel are assumed to be supported unless explicitly restricted for a given travel mode. 
 ## Vehicle Options   
 - Work in progress   
     - Height   
