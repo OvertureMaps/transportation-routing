@@ -11,7 +11,7 @@ fn main() -> Result<()> {
     let log_level = configure_logging(cli.verbose);
     env_logger::Builder::from_env(Env::default().default_filter_or(log_level.to_string())).init();
 
-    info!("Starting omf-bifrost");
+    info!("Starting overture-bifrost");
 
     // Run the CLI with the already parsed arguments and match on the result
     match overture_bifrost::cli::run_with_args(cli) {

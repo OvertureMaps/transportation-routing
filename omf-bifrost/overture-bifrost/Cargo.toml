@@ -9,11 +9,16 @@ description = "Core library for converting Overture Maps transportation data to 
 keywords.workspace = true
 categories = ["data-structures", "algorithms"]
 
+[[bin]]
+name = "overture-bifrost"
+path = "src/main.rs"
+
 [dependencies]
 # Workspace dependencies
 anyhow.workspace = true
 thiserror.workspace = true
 log.workspace = true
+env_logger.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 clap.workspace = true

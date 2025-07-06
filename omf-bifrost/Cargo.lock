@@ -1383,20 +1383,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
-name = "omf-bifrost-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "clap",
- "env_logger",
- "log",
- "overture-bifrost",
- "predicates",
- "tempfile",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1426,6 +1412,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "duckdb",
+ "env_logger",
  "indicatif",
  "log",
  "overture-types",
