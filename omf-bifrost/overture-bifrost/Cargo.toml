@@ -1,0 +1,32 @@
+[package]
+name = "overture-bifrost"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core library for converting Overture Maps transportation data to Valhalla routing tiles"
+keywords.workspace = true
+categories = ["data-structures", "algorithms"]
+
+[dependencies]
+# Workspace dependencies
+anyhow.workspace = true
+thiserror.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+duckdb.workspace = true
+rusqlite.workspace = true
+arrow.workspace = true
+parquet.workspace = true
+indicatif.workspace = true
+
+# Local workspace crates
+overture-types = { path = "../overture-types" }
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true

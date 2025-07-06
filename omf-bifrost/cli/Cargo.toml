@@ -1,0 +1,28 @@
+[package]
+name = "omf-bifrost-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command-line interface for OMF-Bifrost transportation data converter"
+keywords.workspace = true
+
+[[bin]]
+name = "omf-bifrost"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+anyhow.workspace = true
+log.workspace = true
+env_logger.workspace = true
+clap.workspace = true
+
+# Local workspace crates
+overture-bifrost = { path = "../overture-bifrost" }
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
