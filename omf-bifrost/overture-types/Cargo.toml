@@ -1,0 +1,23 @@
+[package]
+name = "overture-types"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rust data types for Overture Maps transportation schema"
+keywords = ["overture", "maps", "transportation", "schema", "types"]
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+# Geometry handling
+geo = "0.28"
+geojson = "0.24"
+
+[dev-dependencies]
+# Testing
+serde_json.workspace = true

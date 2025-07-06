@@ -22,6 +22,41 @@ Named after the rainbow bridge in Norse mythology that connects Midgard (Earth) 
 - Rust toolchain (1.70.0 or newer)
 - Cargo package manager
 
+### System Dependencies
+
+#### macOS
+Install the required dependencies using [Homebrew](https://brew.sh):
+
+```bash
+brew install duckdb sqlite libspatialite
+```
+
+**Important**: After installing dependencies, you need to configure library paths for the build system. Create a `.cargo/config.toml` file in the project root:
+
+```toml
+[env]
+DUCKDB_LIB_DIR = "/opt/homebrew/lib"
+SQLITE3_LIB_DIR = "/opt/homebrew/opt/sqlite/lib"
+DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
+
+[target.aarch64-apple-darwin]
+rustflags = ["-L", "/opt/homebrew/lib"]
+```
+
+**Why these settings are needed:**
+- **`-L` flag**: Tells the Rust linker where to find libraries during compilation (compile-time)
+- **`DYLD_LIBRARY_PATH`**: Tells macOS's dynamic linker where to find shared libraries when running the program (runtime)
+- **Library directories**: Homebrew installs libraries in `/opt/homebrew/lib`, which isn't in the default system search paths
+
+#### Linux
+Install the required dependencies using your package manager. For example, on Ubuntu:
+
+```bash
+sudo apt-get install libsqlite3-dev libsqlite3-mod-spatialite
+```
+
+Follow the [DuckDB installation guide](https://duckdb.org/docs/installation) for your platform.
+
 ### Building from Source
 
 ```bash

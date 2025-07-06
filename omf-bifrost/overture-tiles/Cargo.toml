@@ -1,0 +1,25 @@
+[package]
+name = "overture-tiles"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Map tile visualization for Overture Maps transportation data"
+keywords = ["overture", "maps", "tiles", "visualization", "rendering"]
+
+[dependencies]
+# Workspace dependencies
+anyhow.workspace = true
+thiserror.workspace = true
+log.workspace = true
+
+# Local workspace crates
+overture-types = { path = "../overture-types" }
+
+# Image rendering (for future implementation)
+# image = "0.24"
+# tiny-skia = "0.11"
+
+[dev-dependencies]
+tempfile.workspace = true
