@@ -1,4 +1,4 @@
-# OMF-Bifrost build tasks
+# Overture Bifrost build tasks
 # Run with 'just <task>' (requires 'just' to be installed: cargo install just)
 
 # List available commands
@@ -44,7 +44,7 @@ test:
 
 # Run with verbose logging
 run *ARGS:
-    cargo run -- -vv {{ARGS}}
+    cargo run --bin overture-bifrost -- -vv {{ARGS}}
 
 # Format code
 fmt:
@@ -79,26 +79,26 @@ setup-dirs:
 
 # Download sample Overture Maps data for testing
 download-data: setup-dirs
-    cargo run download -- -v download
+    cargo run --bin overture-bifrost -- -v download
 
 # Download sample Overture Maps divisions data for testing
 download-admin-data: setup-dirs
-    cargo run -- -v download-admin
+    cargo run --bin overture-bifrost -- -v download-admin
 
 # Build tiles from sample data
 build-tiles: build download-data
     @echo "Building tiles from sample data..."
-    cargo run -- build-tiles --input data/example-data.parquet --output-dir output/tiles
+    cargo run --bin overture-bifrost -- build-tiles --input data/example-data.parquet --output-dir output/tiles
 
 # Convert sample data to Valhalla binary format
 convert: build download-data
     @echo "Converting sample data to Valhalla binary format..."
-    cargo run -- convert --input data/example-data.parquet --output-dir output/binary
+    cargo run --bin overture-bifrost -- convert --input data/example-data.parquet --output-dir output/binary
 
 # Build admin data from sample data
 build-admins: build download-admin-data
     @echo "Building admin data from sample data..."
-    cargo run -- -v build-admins -d data/example-divisions.parquet -a data/example-division-areas.parquet -o output/admins
+    cargo run --bin overture-bifrost -- -v build-admins -d data/example-divisions.parquet -a data/example-division-areas.parquet -o output/admins
 
 # Run all processing tasks
 all: build-tiles convert build-admins
@@ -110,13 +110,13 @@ watch:
 
 # Run with specific verbosity level
 run-quiet *ARGS:
-    cargo run -- {{ARGS}}
+    cargo run --bin overture-bifrost -- {{ARGS}}
 
 run-info *ARGS:
-    cargo run -- -v {{ARGS}}
+    cargo run --bin overture-bifrost -- -v {{ARGS}}
 
 run-debug *ARGS:
-    cargo run -- -vv {{ARGS}}
+    cargo run --bin overture-bifrost -- -vv {{ARGS}}
 
 run-trace *ARGS:
-    cargo run -- -vvv {{ARGS}}
+    cargo run --bin overture-bifrost -- -vvv {{ARGS}}
