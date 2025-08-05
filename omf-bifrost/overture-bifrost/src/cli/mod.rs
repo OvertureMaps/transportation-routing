@@ -100,7 +100,7 @@ enum Commands {
         output_file: String,
 
         /// Overture Maps release version
-        #[arg(short, long, default_value = "2025-05-21.0")]
+        #[arg(short, long, default_value = crate::utils::download::DEFAULT_RELEASE_VERSION)]
         release_version: String,
 
         /// Bounding box minimum longitude
@@ -134,7 +134,7 @@ enum Commands {
         output_division_areas_file: String,
 
         /// Overture Maps release version
-        #[arg(short, long, default_value = "2025-05-21.0")]
+        #[arg(short, long, default_value = crate::utils::download::DEFAULT_RELEASE_VERSION)]
         release_version: String,
 
         /// Bounding box minimum longitude

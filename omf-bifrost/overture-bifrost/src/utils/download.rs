@@ -2,6 +2,9 @@ use anyhow::{Context, Result};
 use duckdb::{Connection, params};
 use log::{debug, info};
 
+/// Default Overture Maps release version
+pub const DEFAULT_RELEASE_VERSION: &str = "2025-05-21.0";
+
 pub struct OvertureMapsConfig {
     pub base_url: String,
     pub release_version: String,
@@ -11,7 +14,7 @@ impl Default for OvertureMapsConfig {
     fn default() -> Self {
         Self {
             base_url: "s3://overturemaps-us-west-2/release".to_string(),
-            release_version: "2025-05-21.0".to_string(),
+            release_version: DEFAULT_RELEASE_VERSION.to_string(),
         }
     }
 }
@@ -173,8 +176,6 @@ impl OvertureMapsQuery {
         )
     }
 }
-
-
 pub fn download_overture_data(
     release_version: &str,
     xmin: f64,

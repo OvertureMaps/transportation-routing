@@ -14,22 +14,19 @@ name = "overture-bifrost"
 path = "src/main.rs"
 
 [dependencies]
-# Workspace dependencies
 anyhow.workspace = true
-thiserror.workspace = true
-log.workspace = true
-env_logger.workspace = true
-serde.workspace = true
-serde_json.workspace = true
+arrow.workspace = true
 clap.workspace = true
 duckdb.workspace = true
-rusqlite.workspace = true
-arrow.workspace = true
-parquet.workspace = true
+env_logger.workspace = true
 indicatif.workspace = true
-
-# Local workspace crates
-overture-types = { path = "../overture-types" }
+log.workspace = true
+overture-types.workspace = true
+parquet.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
