@@ -1,0 +1,18 @@
+[package]
+name = "overture-express"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fast database for Overture Maps transportation data using LMDB and Cap'n Proto"
+keywords.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+capnp = "0.21.2"
+# lmdb = "0.8"  # Commented out for now
+
+[build-dependencies]
+capnpc = "0.21.1"
+

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "overture-bifrost",
+    "overture-express",
     "overture-types", 
     "overture-tiles"
 ]
