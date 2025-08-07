@@ -28,7 +28,7 @@
 	|       sidewalk |     kService\_Other |
 	|          steps |     kService\_Other |
 	|          track |     kService\_Other |
-	|        unknown |       kUnclassified |
+	|        unknown |     kService\_Other |
 
 ## Access Restrictions   
 - Access restrictions in Overture currently have a lot of needless complexity. Roads can get one of three assignment types: designated, allowed or denied. Those assignments then get a mode of travel assigned to them. A better long term approach would be to revisit the scheme approach in Overture to utilize only the denied assignment and assume all modes of transit are available for any road absent that assignment. That would greatly simplify the structure and reduce all the opportunities for conflict.   
