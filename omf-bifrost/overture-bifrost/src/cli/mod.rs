@@ -4,6 +4,8 @@ use log::{debug, info};
 use std::fs;
 use std::path::Path;
 
+use overture_valhalla_writer::writer::convert_overture_to_valhalla;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
@@ -50,7 +52,7 @@ enum Commands {
         /// Input GeoParquet file containing Overture Maps transportation data
         /// This should contain the segments and connectors to be converted
         #[arg(short, long)]
-        input: String,
+        input_dir: String,
 
         /// Directory where the resulting binary files will be written
         /// Will contain ways.bin, nodes.bin, and way_nodes.bin files
@@ -197,20 +199,19 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
             info!("Tile building not yet implemented");
         }
         Commands::Convert {
-            input,
+            input_dir,
             output_dir,
             threads,
         } => {
             info!("Converting Overture Maps data to Valhalla binary format");
-            info!("Input: {}", input);
+            info!("Input directory: {}", input_dir);
             info!("Output directory: {}", output_dir);
 
             if let Some(thread_count) = threads {
                 info!("Using {} threads", thread_count);
             }
 
-            // TODO: Implement actual conversion logic
-            info!("Conversion not yet implemented");
+            convert_overture_to_valhalla(input_dir, output_dir)?;
         }
         Commands::BuildAdmins {
             divisions,
