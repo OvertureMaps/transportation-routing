@@ -30,6 +30,7 @@ indicatif.workspace = true
 
 # Local workspace crates
 overture-types = { path = "../overture-types" }
+overture-valhalla-writer = { path = "../overture-valhalla-writer" }
 
 [dev-dependencies]
 assert_cmd.workspace = true
