@@ -1,3 +1,3 @@
 pub mod writer;
-pub mod osm;
 pub mod utils;
+pub mod bindings;

@@ -16,5 +16,4 @@ geozero.workspace = true
 geo-types.workspace = true
 
 [build-dependencies]
-cc = "1.0"
-
+bindgen = "0.69"
