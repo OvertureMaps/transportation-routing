@@ -9,6 +9,3 @@ Cargo.lock
 *.parquet
 !/tests/data/*.parquet
 
-# Generated Valhalla bindings
-/overture-valhalla-writer/src/bindings.rs
-

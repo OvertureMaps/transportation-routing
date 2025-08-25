@@ -1,5 +1,5 @@
 use crate::utils;
-use crate::bindings::{OSMNode, OSMWay, OSMWayNode};
+use crate::ffi::{OSMNode, OSMWay, OSMWayNode};
 
 use std::fs::File;
 use parquet::file::reader::{FileReader, SerializedFileReader};
@@ -8,17 +8,45 @@ use parquet::record::Field;
 use parquet::record::List;
 
 impl OSMWay {
-    pub fn default() -> Self {
-        unsafe { std::mem::zeroed() }
-    }
+    fn default_valhalla(osmid:u64, name_index:u32, nodecount:u16) -> OSMWay
+    {
+        let mut way = OSMWay::default();
+        way.osmwayid_ = osmid;
+        way.name_index_ = name_index;
+        way.nodecount_ = nodecount;
+
+        // TODO: could also be 0, ("kPavedSmooth")? See "graphconstants.h" in Valhalla
+        way.set_surface_(3); // kCompacted
+
+        // TODO: not all countries drive on the right
+        way.set_drive_on_right_(1);
+
+        // TODO: could also be 6, ("kResidential") or 0 ("kMotorway")? See "graphconstants.h" in Valhalla
+        way.set_road_class_(7); // kServiceOther
+
+        // TODO: might want to use 0 here ("kRoad)?
+        way.set_use_(25); // "kFootway" ("enum class Use : uint8_t")
+
+        // TODO: Can we leave this 0 for Overture->Valhalla conversion?
+        way.set_has_user_tags_(0);
+
+        // TODO: Have a second look at this, does this mean pedestrian-only?
+        way.set_pedestrian_forward_(1);
+        way.set_pedestrian_backward_(1);
+
+        // TODO: get this from Overture data
+        way.speed_ = 25; // 25 km/h
+
+        way
+    }    
 }
 
 trait OSMWayVecExt {
-    fn write_to_file(&self, path: &str) -> std::io::Result<()>;
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()>;
 }
 
 impl OSMWayVecExt for Vec<OSMWay> {
-    fn write_to_file(&self, path: &str) -> std::io::Result<()> {
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
         let ptr = self.as_ptr() as *const u8;
         let size = std::mem::size_of::<OSMWay>() * self.len();
         let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
@@ -27,17 +55,14 @@ impl OSMWayVecExt for Vec<OSMWay> {
 }
 
 impl OSMNode {
-    pub fn default() -> Self {
-        unsafe { std::mem::zeroed() }
-    }
 }
 
 trait OSMNodeVecExt {
-    fn write_to_file(&self, path: &str) -> std::io::Result<()>;
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()>;
 }
 
 impl OSMNodeVecExt for Vec<OSMNode> {
-    fn write_to_file(&self, path: &str) -> std::io::Result<()> {
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
         let ptr = self.as_ptr() as *const u8;
         let size = std::mem::size_of::<OSMNode>() * self.len();
         let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
@@ -47,16 +72,37 @@ impl OSMNodeVecExt for Vec<OSMNode> {
 
 impl OSMWayNode {
     pub fn default() -> Self {
-        unsafe { std::mem::zeroed() }
+         unsafe { std::mem::zeroed() }
     }
+
+    pub fn default_valhalla(way_index : u32, way_shape_node_index : u32, osmid: u64, lng: f64, lat: f64, intersection: u32) -> OSMWayNode
+    {
+        let mut waynode = OSMWayNode::default();
+        waynode.way_index = way_index;
+        waynode.way_shape_node_index = way_shape_node_index;
+
+        waynode.node.osmid_ = osmid;
+
+        let (lat7, lng7) = utils::encode_lat_lon(lat, lng);
+        waynode.node.lng7_ = lng7;
+        waynode.node.lat7_ = lat7;
+        waynode.node.set_intersection_(intersection);
+
+        // TODO: could also be 4095 ("kAllAccess")? See "graphconstants.h" in Valhalla
+        // TODO: get from Overture data
+        waynode.node.set_access_(2047);
+
+        waynode
+    }
+
 }
 
 trait OSMWayNodeVecExt {
-    fn write_to_file(&self, path: &str) -> std::io::Result<()>;
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()>;
 }
 
 impl OSMWayNodeVecExt for Vec<OSMWayNode> {
-    fn write_to_file(&self, path: &str) -> std::io::Result<()> {
+    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
         let ptr = self.as_ptr() as *const u8;
         let size = std::mem::size_of::<OSMWayNode>() * self.len();
         let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
@@ -324,59 +370,7 @@ fn process_segment(
     exported_road
 }
 
-fn create_valhalla_osmway(osmid:u64, name_index:u32, nodecount:u16) -> OSMWay
-{
-    let mut way = OSMWay::default();
-    way.osmwayid_ = osmid;
-    way.name_index_ = name_index;
-    way.nodecount_ = nodecount;
-
-    // TODO: could also be 0, ("kPavedSmooth")? See "graphconstants.h" in Valhalla
-    way.set_surface_(3); // kCompacted
-
-    // TODO: not all countries drive on the right
-    way.set_drive_on_right_(1);
-
-    // TODO: could also be 6, ("kResidential") or 0 ("kMotorway")? See "graphconstants.h" in Valhalla
-    way.set_road_class_(7); // kServiceOther
-
-    // TODO: might want to use 0 here ("kRoad)?
-    way.set_use_(25); // "kFootway" ("enum class Use : uint8_t")
-
-    // TODO: Can we leave this 0 for Overture->Valhalla conversion?
-    way.set_has_user_tags_(0);
-
-    // TODO: Have a second look at this, does this mean pedestrian-only?
-    way.set_pedestrian_forward_(1);
-    way.set_pedestrian_backward_(1);
-
-    // TODO: get this from Overture data
-    way.speed_ = 25; // 25 km/h
-
-    way
-}
-
-fn create_valhalla_osmwaynode(way_index : u32, way_shape_node_index : u32, osmid: u64, lng: f64, lat: f64, intersection: u32) -> OSMWayNode
-{
-    let mut waynode = OSMWayNode::default();
-    waynode.way_index = way_index;
-    waynode.way_shape_node_index = way_shape_node_index;
-
-    waynode.node.osmid_ = osmid;
-
-    let (lat7, lng7) = utils::encode_lat_lon(lat, lng);
-    waynode.node.lng7_ = lng7;
-    waynode.node.lat7_ = lat7;
-    waynode.node.set_intersection_(intersection);
-
-    // TODO: could also be 4095 ("kAllAccess")? See "graphconstants.h" in Valhalla
-    // TODO: get from Overture data
-    waynode.node.set_access_(2047);
-
-    waynode
-}
-
-fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &str)
+fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &Path)
 {
     let mut ways = Vec::new();
     let mut waynodes = Vec::new();
@@ -384,15 +378,15 @@ fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &str)
     for way_index in 0..exported_roads.len() {
         let node_count = exported_roads[way_index].points.len() as u16;
         let offset_way_index: u64 = way_index as u64 * 2;
-        ways.push(create_valhalla_osmway(offset_way_index + 1, 1, node_count));
-        ways.push(create_valhalla_osmway(offset_way_index + 2, 1, node_count));
+        ways.push(OSMWay::default_valhalla(offset_way_index + 1, 1, node_count));
+        ways.push(OSMWay::default_valhalla(offset_way_index + 2, 1, node_count));
 
         // Valhalla complains when road is only one way, so for now we export it twice, this is the first time...
         for (point_index, point) in exported_roads[way_index].points.iter().enumerate() {
             // TODO: only make intersection if other way intersects
             let intersection: u64 = 1;
 
-            waynodes.push(create_valhalla_osmwaynode(
+            waynodes.push(OSMWayNode::default_valhalla(
                 offset_way_index as u32,
                 point_index as u32,
                 point.index as u64,
@@ -406,7 +400,7 @@ fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &str)
             // TODO: only make intersection if other way intersects
             let intersection: u64 = 1;
 
-            waynodes.push(create_valhalla_osmwaynode(
+            waynodes.push(OSMWayNode::default_valhalla(
                 offset_way_index as u32,
                 point_index as u32,
                 point.index as u64,
@@ -416,15 +410,15 @@ fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &str)
         }
     }
 
-    ways.write_to_file(&format!("{}/ways.bin", output_dir));
-    waynodes.write_to_file(&format!("{}/way_nodes.bin", output_dir));
+    ways.write_to_file(&output_dir.join("ways.bin"));
+    waynodes.write_to_file(&output_dir.join("way_nodes.bin"));
 }
 
-pub fn convert_overture_to_valhalla(input_dir : &str, output_dir: &str) -> std::io::Result<()>
+pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std::io::Result<()>
 {
-    let segment_path = format!("{}/segment.parquet", input_dir);
-    let connector_path = format!("{}/connector.parquet", input_dir);
-    let overture_data = import_overture_data(Path::new(&segment_path), Path::new(&connector_path))?;
+    let segment_path = input_dir.join("segment.parquet");
+    let connector_path = input_dir.join("connector.parquet");
+    let overture_data = import_overture_data(&segment_path, &connector_path)?;
 
     let mut exported_roads: Vec<ExportedRoad> = Vec::new();
     let mut next_index = 1;

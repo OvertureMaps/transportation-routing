@@ -1,3 +1,9 @@
+// This file contains definitions for OSMWay, OSMNode, and OSMWayNode
+// The structs have been copied from the following files in the Valhalla repo:
+// - https://github.com/valhalla/valhalla/blob/master/valhalla/mjolnir/osmnode.h
+// - https://github.com/valhalla/valhalla/blob/master/valhalla/mjolnir/osmdata.h
+// - https://github.com/valhalla/valhalla/blob/master/valhalla/mjolnir/osmway.h
+
 #include <stdint.h>
 
 struct OSMWay {

@@ -1,3 +1,6 @@
 pub mod writer;
 pub mod utils;
-pub mod bindings;
+
+pub mod ffi {
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
