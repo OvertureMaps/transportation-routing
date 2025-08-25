@@ -53,6 +53,8 @@ tempfile = "3.8"
 geozero = { version = "0.14", features = ["with-wkb", "with-geo"] }
 geo-types = "0.7"
 
+bindgen = "0.69"
+
 [profile.release]
 lto = true
 codegen-units = 1

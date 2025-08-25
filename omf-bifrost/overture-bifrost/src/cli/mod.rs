@@ -211,7 +211,7 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
                 info!("Using {} threads", thread_count);
             }
 
-            convert_overture_to_valhalla(input_dir, output_dir)?;
+            convert_overture_to_valhalla(Path::new(&input_dir), Path::new(&output_dir))?;
         }
         Commands::BuildAdmins {
             divisions,

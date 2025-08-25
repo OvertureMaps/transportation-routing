@@ -1,24 +1,14 @@
-use std::fs;
+use std::path::PathBuf;
+use std::env;
 
 fn main() {
-    // Tell Cargo to look for changes in the `c` directory
-    println!("cargo:rerun-if-changed=c");
-
-    // Create a new `cc::Build`
-    let mut build = cc::Build::new();
-
-    // Iterate over all `.c` files in the `c` directory
-    for entry in fs::read_dir("c").unwrap() {
-        let path = entry.unwrap().path();
-        if let Some(extension) = path.extension() {
-            if extension == "c" {
-                // Add the `.c` file to the build process
-                build.file(path);
-            }
-        }
-    }
-
-    // Compile the C code
-    build.compile("c_lib"); // Name of the output library
+    let bindings_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs");
+    println!("cargo:rerun-if-changed=c_code/valhalla.h");
+    bindgen::Builder::default()
+        .header("c_code/valhalla.h")
+        .derive_default(true)
+        .generate()
+        .expect("Unable to generate bindings")
+        .write_to_file(bindings_path)
+        .expect("Couldn't write bindings!");
 }
-
