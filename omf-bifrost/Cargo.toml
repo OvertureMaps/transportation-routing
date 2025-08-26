@@ -3,7 +3,8 @@ members = [
     "overture-bifrost",
     "overture-valhalla-writer",
     "overture-types", 
-    "overture-tiles"
+    "overture-tiles",
+    "valhalla-sys"
 ]
 resolver = "2"
 
@@ -20,6 +21,7 @@ keywords = ["overture", "maps", "routing", "valhalla", "transportation"]
 [workspace.dependencies]
 # Error handling
 anyhow = "1.0"
+bindgen = "0.69"
 thiserror = "2.0.12"
 
 # Logging
@@ -52,8 +54,6 @@ tempfile = "3.8"
 # WKB parsing
 geozero = { version = "0.14", features = ["with-wkb", "with-geo"] }
 geo-types = "0.7"
-
-bindgen = "0.69"
 
 [profile.release]
 lto = true

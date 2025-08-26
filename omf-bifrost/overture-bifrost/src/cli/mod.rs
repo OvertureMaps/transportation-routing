@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use log::{debug, info};
@@ -52,12 +53,12 @@ enum Commands {
         /// Input GeoParquet file containing Overture Maps transportation data
         /// This should contain the segments and connectors to be converted
         #[arg(short, long)]
-        input_dir: String,
+        input_dir: PathBuf,
 
         /// Directory where the resulting binary files will be written
         /// Will contain ways.bin, nodes.bin, and way_nodes.bin files
         #[arg(short, long)]
-        output_dir: String,
+        output_dir: PathBuf,
 
         /// Number of parallel threads to use during conversion
         /// Defaults to available CPU cores if not specified
@@ -204,14 +205,14 @@ pub fn run_with_args(cli: Cli) -> Result<()> {
             threads,
         } => {
             info!("Converting Overture Maps data to Valhalla binary format");
-            info!("Input directory: {}", input_dir);
-            info!("Output directory: {}", output_dir);
+            info!("Input directory: {}", input_dir.display());
+            info!("Output directory: {}", output_dir.display());
 
             if let Some(thread_count) = threads {
                 info!("Using {} threads", thread_count);
             }
 
-            convert_overture_to_valhalla(Path::new(&input_dir), Path::new(&output_dir))?;
+            convert_overture_to_valhalla(input_dir, output_dir)?;
         }
         Commands::BuildAdmins {
             divisions,

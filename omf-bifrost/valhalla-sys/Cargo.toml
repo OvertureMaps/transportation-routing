@@ -1,0 +1,13 @@
+[package]
+name = "valhalla-sys"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rust wrapper around Valhalla structs used for exporting ways and way nodes"
+keywords.workspace = true
+categories = ["map", "routing", "valhalla"]
+
+[build-dependencies]
+bindgen.workspace = true
