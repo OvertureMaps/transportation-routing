@@ -53,11 +53,7 @@ fn parse_point_wkb(wkb_data: &[u8]) -> Point {
             }
         }
         _ => {
-            assert!(false, "Expected WKB to represent a Point");
-            Point {
-                lat: 0.0,
-                lon: 0.0
-            }
+            panic!("Expected WKB to represent a Point");
         }   
     }
 }
@@ -83,8 +79,7 @@ fn process_geometry_vector(wkb_data: &[u8]) -> Vec<Point> {
             output
         }
         _ => {
-            assert!(false, "Expected WKB to represent a LineString");
-            Vec::new()
+            panic!("Expected WKB to represent a LineString");
         }   
     }
 }
@@ -119,7 +114,7 @@ fn process_connector_refs(connector_ref_list : List) -> Vec<ConnectorRef>
 }
 
 pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::io::Result<Data> {
-    let file = File::open(&segment_path)?;
+    let file = File::open(segment_path)?;
     let reader = SerializedFileReader::new(file)?;
 
     let iter = reader.get_row_iter(None)?;
@@ -162,7 +157,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
         });
     }
 
-    let file = File::open(&connector_path)?;
+    let file = File::open(connector_path)?;
     let reader = SerializedFileReader::new(file)?;
 
     let iter = reader.get_row_iter(None)?;
@@ -185,12 +180,12 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
 
 
         connectors.push(Connector {
-            id: id,
+            id,
             coordinate: coordinate.unwrap()
         });
     }
 
-    Ok(Data { segments: segments, connectors: connectors })
+    Ok(Data { segments, connectors })
 }
 
 #[derive(Debug)]
@@ -207,7 +202,7 @@ struct ExportedRoad
 
 fn get_point_for_connector(
     connector_ref: &ConnectorRef,
-    all_connectors: &Vec<Connector>
+    all_connectors: &[Connector]
 ) -> Option<Point> {
     all_connectors.iter()
         .find(|c| c.id == connector_ref.id)
@@ -216,8 +211,8 @@ fn get_point_for_connector(
 
 fn get_connector_index_for_point(
     point: &Point,
-    connector_refs: &Vec<ConnectorRef>,
-    all_connectors: &Vec<Connector>
+    connector_refs: &[ConnectorRef],
+    all_connectors: &[Connector]
 ) -> Option<usize>{
     for (connector_ref_index, connector_ref) in connector_refs.iter().enumerate() {
         let connector_point = get_point_for_connector(connector_ref, all_connectors);
@@ -235,7 +230,7 @@ fn get_connector_index_for_point(
 
 fn process_segment(
     segment: &Segment,
-    all_connectors: &Vec<Connector>,
+    all_connectors: &[Connector],
     next_index: &mut usize
 ) -> ExportedRoad {
     let mut exported_road = ExportedRoad {
@@ -270,8 +265,8 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
     let mut ways = Vec::new();
     let mut waynodes = Vec::new();
 
-    for way_index in 0..exported_roads.len() {
-        let node_count = exported_roads[way_index].points.len() as u16;
+    for (way_index, exported_road) in exported_roads.iter().enumerate() {
+        let node_count = exported_road.points.len() as u16;
         let offset_way_index: u64 = way_index as u64 * 2;
         ways.push(OsmWay::simple_valhalla(offset_way_index + 1, 1, node_count));
         ways.push(OsmWay::simple_valhalla(offset_way_index + 2, 1, node_count));
