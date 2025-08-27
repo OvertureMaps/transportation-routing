@@ -15,5 +15,6 @@ parquet.workspace = true
 geozero.workspace = true
 geo-types.workspace = true
 
-valhalla-sys = { path = "../valhalla-sys" }
+[build-dependencies]
+bindgen.workspace = true
 

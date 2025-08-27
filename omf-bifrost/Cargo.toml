@@ -3,8 +3,7 @@ members = [
     "overture-bifrost",
     "overture-valhalla-writer",
     "overture-types", 
-    "overture-tiles",
-    "valhalla-sys"
+    "overture-tiles"
 ]
 resolver = "2"
 

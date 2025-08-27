@@ -1,9 +1,10 @@
-use valhalla_sys::{OsmWay, OsmWayNode, OsmWayVecExt, OsmWayNodeVecExt};
 use std::fs::File;
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use std::path::Path;
 use parquet::record::Field;
 use parquet::record::List;
+
+use crate::valhalla_sys::{OsmWay, OsmWayNode};
 
 #[derive(Debug, Clone)]
 pub struct Point {
@@ -265,7 +266,7 @@ fn process_segment(
     exported_road
 }
 
-fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &Path) -> std::io::Result<()> {
+fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::Result<()> {
     let mut ways = Vec::new();
     let mut waynodes = Vec::new();
 
@@ -304,8 +305,8 @@ fn export_roads(exported_roads: &Vec<ExportedRoad>, output_dir: &Path) -> std::i
         }
     }
 
-    ways.write_to_file(&output_dir.join("ways.bin"))?;
-    waynodes.write_to_file(&output_dir.join("way_nodes.bin"))?;
+    OsmWay::write_ways(&ways, &output_dir.join("ways.bin"))?;
+    OsmWayNode::write_way_nodes(&waynodes, &output_dir.join("way_nodes.bin"))?;
     Ok(())
 }
 

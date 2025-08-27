@@ -24,16 +24,20 @@ impl OsmNode {
         let size = std::mem::size_of::<ffi::OSMNode>();
         unsafe { std::slice::from_raw_parts(ptr, size) }
     }
+
+    pub fn write_nodes(data: &[OsmNode], path: &Path) -> std::io::Result<()> {
+        let ptr = data.as_ptr() as *const u8;
+        let size = std::mem::size_of::<OsmNode>() * data.len();
+        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
+        std::fs::write(path, bytes)
+    }
 }
 
 #[repr(transparent)]
+#[derive(Default)]
 pub struct OsmWayNode(ffi::OSMWayNode);
 
 impl OsmWayNode {
-    pub fn default() -> OsmWayNode {
-        OsmWayNode(ffi::OSMWayNode::default())
-    }
-
     pub fn as_ptr(&self) -> *const ffi::OSMWayNode {
         &self.0 as *const ffi::OSMWayNode
     }
@@ -43,16 +47,40 @@ impl OsmWayNode {
         let size = std::mem::size_of::<ffi::OSMWayNode>();
         unsafe { std::slice::from_raw_parts(ptr, size) }
     }
+
+    pub fn simple_valhalla(way_index : u32, way_shape_node_index : u32, osmid: u64, lng: f64, lat: f64, intersection: u32) -> Self
+    {
+        let mut waynode = OsmWayNode::default();
+        waynode.0.way_index = way_index;
+        waynode.0.way_shape_node_index = way_shape_node_index;
+
+        waynode.0.node.osmid_ = osmid;
+
+        let (lat7, lng7) = encode_lat_lon(lat, lng);
+        waynode.0.node.lng7_ = lng7;
+        waynode.0.node.lat7_ = lat7;
+        waynode.0.node.set_intersection_(intersection);
+
+        // TODO: could also be 4095 ("kAllAccess")? See "graphconstants.h" in Valhalla
+        // TODO: get from Overture data
+        waynode.0.node.set_access_(2047);
+
+        waynode
+    }
+
+    pub fn write_way_nodes(data: &[OsmWayNode], path: &Path) -> std::io::Result<()> {
+        let ptr = data.as_ptr() as *const u8;
+        let size = std::mem::size_of::<OsmWayNode>() * data.len();
+        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
+        std::fs::write(path, bytes)
+    }
 }
 
 #[repr(transparent)]
+#[derive(Default)]
 pub struct OsmWay(ffi::OSMWay);
 
 impl OsmWay {
-    pub fn default() -> OsmWay {
-        OsmWay(ffi::OSMWay::default())
-    }
-
     pub fn as_ptr(&self) -> *const ffi::OSMWay {
         &self.0 as *const ffi::OSMWay
     }
@@ -94,67 +122,10 @@ impl OsmWay {
 
         way
     }    
-}
 
-pub trait OsmWayVecExt {
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()>;
-}
-
-impl OsmWayVecExt for Vec<OsmWay> {
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
-        let ptr = self.as_ptr() as *const u8;
-        let size = std::mem::size_of::<OsmWay>() * self.len();
-        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
-        std::fs::write(path, bytes)
-    }
-}
-
-impl OsmNode {
-}
-
-pub trait OsmNodeVecExt {
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()>;
-}
-
-impl OsmNodeVecExt for Vec<OsmNode> {
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
-        let ptr = self.as_ptr() as *const u8;
-        let size = std::mem::size_of::<OsmNode>() * self.len();
-        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
-        std::fs::write(path, bytes)
-    }
-}
-
-impl OsmWayNode {
-    pub fn simple_valhalla(way_index : u32, way_shape_node_index : u32, osmid: u64, lng: f64, lat: f64, intersection: u32) -> Self
-    {
-        let mut waynode = OsmWayNode::default();
-        waynode.0.way_index = way_index;
-        waynode.0.way_shape_node_index = way_shape_node_index;
-
-        waynode.0.node.osmid_ = osmid;
-
-        let (lat7, lng7) = encode_lat_lon(lat, lng);
-        waynode.0.node.lng7_ = lng7;
-        waynode.0.node.lat7_ = lat7;
-        waynode.0.node.set_intersection_(intersection);
-
-        // TODO: could also be 4095 ("kAllAccess")? See "graphconstants.h" in Valhalla
-        // TODO: get from Overture data
-        waynode.0.node.set_access_(2047);
-
-        waynode
-    }
-}
-
-pub trait OsmWayNodeVecExt {
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()>;
-}
-
-impl OsmWayNodeVecExt for Vec<OsmWayNode> {
-    fn write_to_file(&self, path: &Path) -> std::io::Result<()> {
-        let ptr = self.as_ptr() as *const u8;
-        let size = std::mem::size_of::<OsmWayNode>() * self.len();
+    pub fn write_ways(data: &[OsmWay], path: &Path) -> std::io::Result<()> {
+        let ptr = data.as_ptr() as *const u8;
+        let size = std::mem::size_of::<OsmWay>() * data.len();
         let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
         std::fs::write(path, bytes)
     }

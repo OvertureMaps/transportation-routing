@@ -1563,10 +1563,10 @@ dependencies = [
 name = "overture-valhalla-writer"
 version = "0.1.0"
 dependencies = [
+ "bindgen",
  "geo-types",
  "geozero",
  "parquet",
- "valhalla-sys",
 ]
 
 [[package]]
@@ -2273,13 +2273,6 @@ checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "valhalla-sys"
-version = "0.1.0"
-dependencies = [
- "bindgen",
 ]
 
 [[package]]
