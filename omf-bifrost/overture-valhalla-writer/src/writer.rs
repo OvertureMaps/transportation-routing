@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{write, File};
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use std::path::Path;
 use parquet::record::Field;
@@ -268,20 +268,21 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
     for (way_index, exported_road) in exported_roads.iter().enumerate() {
         let node_count = exported_road.points.len() as u16;
         let offset_way_index: u64 = way_index as u64 * 2;
-        ways.push(OsmWay::simple_valhalla(offset_way_index + 1, 1, node_count));
-        ways.push(OsmWay::simple_valhalla(offset_way_index + 2, 1, node_count));
+        ways.push(OsmWay::new(offset_way_index + 1, 1, node_count));
+        ways.push(OsmWay::new(offset_way_index + 2, 1, node_count));
 
         // Valhalla complains when road is only one way, so for now we export it twice, this is the first time...
         for (point_index, point) in exported_roads[way_index].points.iter().enumerate() {
             // TODO: only make intersection if other way intersects
             let intersection: u64 = 1;
 
-            waynodes.push(OsmWayNode::simple_valhalla(
+            waynodes.push(OsmWayNode::new(
                 offset_way_index as u32,
                 point_index as u32,
                 point.index as u64,
-                point.point.lon, point.point.lat,
-                intersection as u32
+                point.point.lon,
+                point.point.lat,
+                intersection as u32,
             ));
         }
 
@@ -290,18 +291,19 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
             // TODO: only make intersection if other way intersects
             let intersection: u64 = 1;
 
-            waynodes.push(OsmWayNode::simple_valhalla(
+            waynodes.push(OsmWayNode::new(
                 offset_way_index as u32,
                 point_index as u32,
                 point.index as u64,
-                point.point.lon, point.point.lat,
-                intersection as u32
+                point.point.lon,
+                point.point.lat,
+                intersection as u32,
             ));
         }
     }
 
-    OsmWay::write_ways(&ways, &output_dir.join("ways.bin"))?;
-    OsmWayNode::write_way_nodes(&waynodes, &output_dir.join("way_nodes.bin"))?;
+    write(output_dir.join("ways.bin"), OsmWay::slice_as_bytes(&ways))?;
+    write(output_dir.join("way_nodes.bin"), OsmWayNode::slice_as_bytes(&waynodes))?;
     Ok(())
 }
 

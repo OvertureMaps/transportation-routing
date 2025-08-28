@@ -1,5 +1,3 @@
-use std::path::Path;
-
 fn encode_lat_lon(decoded_lat: f64, decoded_lon: f64) -> (u32, u32) {
     let encoded_lat = ((decoded_lat + 90.0) * 10f64.powi(7)) as u32;
     let encoded_lon = ((decoded_lon + 180.0) * 10f64.powi(7)) as u32;
@@ -12,43 +10,29 @@ pub mod ffi {
 }
 
 #[repr(transparent)]
+#[derive(Debug, Default)]
 pub struct OsmNode(ffi::OSMNode);
 
 impl OsmNode {
-    pub fn as_ptr(&self) -> *const ffi::OSMNode {
-        &self.0 as *const ffi::OSMNode
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        let ptr = self.as_ptr() as *const u8;
-        let size = std::mem::size_of::<ffi::OSMNode>();
+    pub fn slice_as_bytes(slice: &[Self]) -> &[u8] {
+        let ptr = slice.as_ptr() as *const u8;
+        let size = size_of::<Self>() * slice.len();
         unsafe { std::slice::from_raw_parts(ptr, size) }
-    }
-
-    pub fn write_nodes(data: &[OsmNode], path: &Path) -> std::io::Result<()> {
-        let ptr = data.as_ptr() as *const u8;
-        let size = std::mem::size_of::<OsmNode>() * data.len();
-        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
-        std::fs::write(path, bytes)
     }
 }
 
 #[repr(transparent)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct OsmWayNode(ffi::OSMWayNode);
 
 impl OsmWayNode {
-    pub fn as_ptr(&self) -> *const ffi::OSMWayNode {
-        &self.0 as *const ffi::OSMWayNode
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        let ptr = self.as_ptr() as *const u8;
-        let size = std::mem::size_of::<ffi::OSMWayNode>();
+    pub fn slice_as_bytes(slice: &[Self]) -> &[u8] {
+        let ptr = slice.as_ptr() as *const u8;
+        let size = size_of::<Self>() * slice.len();
         unsafe { std::slice::from_raw_parts(ptr, size) }
     }
 
-    pub fn simple_valhalla(way_index : u32, way_shape_node_index : u32, osmid: u64, lng: f64, lat: f64, intersection: u32) -> Self
+    pub fn new(way_index: u32, way_shape_node_index: u32, osmid: u64, lng: f64, lat: f64, intersection: u32) -> Self
     {
         let mut waynode = OsmWayNode::default();
         waynode.0.way_index = way_index;
@@ -67,31 +51,20 @@ impl OsmWayNode {
 
         waynode
     }
-
-    pub fn write_way_nodes(data: &[OsmWayNode], path: &Path) -> std::io::Result<()> {
-        let ptr = data.as_ptr() as *const u8;
-        let size = std::mem::size_of::<OsmWayNode>() * data.len();
-        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
-        std::fs::write(path, bytes)
-    }
 }
 
 #[repr(transparent)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct OsmWay(ffi::OSMWay);
 
 impl OsmWay {
-    pub fn as_ptr(&self) -> *const ffi::OSMWay {
-        &self.0 as *const ffi::OSMWay
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        let ptr = self.as_ptr() as *const u8;
-        let size = std::mem::size_of::<ffi::OSMWay>();
+    pub fn slice_as_bytes(slice: &[Self]) -> &[u8] {
+        let ptr = slice.as_ptr() as *const u8;
+        let size = size_of::<Self>() * slice.len();
         unsafe { std::slice::from_raw_parts(ptr, size) }
     }
 
-    pub fn simple_valhalla(osmid:u64, name_index:u32, nodecount:u16) -> Self
+    pub fn new(osmid:u64, name_index:u32, nodecount:u16) -> Self
     {
         let mut way = OsmWay::default();
         way.0.osmwayid_ = osmid;
@@ -122,11 +95,4 @@ impl OsmWay {
 
         way
     }    
-
-    pub fn write_ways(data: &[OsmWay], path: &Path) -> std::io::Result<()> {
-        let ptr = data.as_ptr() as *const u8;
-        let size = std::mem::size_of::<OsmWay>() * data.len();
-        let bytes = unsafe { std::slice::from_raw_parts(ptr, size) };
-        std::fs::write(path, bytes)
-    }
 }
