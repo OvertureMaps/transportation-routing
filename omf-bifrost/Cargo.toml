@@ -20,6 +20,7 @@ keywords = ["overture", "maps", "routing", "valhalla", "transportation"]
 [workspace.dependencies]
 # Error handling
 anyhow = "1.0"
+bindgen = "0.69"
 thiserror = "2.0.12"
 
 # Logging
