@@ -334,7 +334,7 @@ fn check_permissions(road_class: &str) -> Permissions {
 
     let auto_allowed = !matches!(
         road_class,
-        "null" | "track" | "steps" | "path" | "living_street" | "pedestrian" | "footway" | "cycleway" | "standard_gauge"
+        "null" | "steps" | "path" | "living_street" | "pedestrian" | "footway" | "cycleway" | "standard_gauge"
     );
 
     Permissions {
