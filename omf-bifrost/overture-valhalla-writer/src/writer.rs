@@ -3,6 +3,7 @@ use parquet::file::reader::{FileReader, SerializedFileReader};
 use std::path::Path;
 use parquet::record::Field;
 use parquet::record::List;
+use log::info;
 
 use crate::valhalla_sys::{OsmWay, OsmWayNode};
 
@@ -354,18 +355,18 @@ pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std
     for (index, segment) in overture_data.segments.iter().enumerate() {
         let road_class: &str = segment.road_class.as_deref().unwrap_or("null");
 
-        println!("Processing segment {} / {}: {} ({})", index + 1, overture_data.segments.len(), segment.name, road_class);
+        info!("Processing segment {} / {}: {} ({})", index + 1, overture_data.segments.len(), segment.name, road_class);
         let permissions = check_permissions(road_class);
 
         if !permissions.auto_allowed && !permissions.pedestrian_allowed {
-            println!("- Ignored");
+            info!("- Ignored");
             continue;
         } else {
             if permissions.auto_allowed {
-                println!("- Auto allowed");
+                info!("- Auto allowed");
             }
             if permissions.pedestrian_allowed {
-                println!("- Pedestrian allowed");
+                info!("- Pedestrian allowed");
             }
         }
 
