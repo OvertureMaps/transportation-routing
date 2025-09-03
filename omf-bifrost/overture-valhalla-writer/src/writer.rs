@@ -3,6 +3,7 @@ use parquet::file::reader::{FileReader, SerializedFileReader};
 use std::path::Path;
 use parquet::record::Field;
 use parquet::record::List;
+use log::info;
 
 use crate::valhalla_sys::{OsmWay, OsmWayNode};
 
@@ -27,6 +28,7 @@ pub struct Connector {
 #[derive(Debug)]
 pub struct Segment {
     pub name: String,
+    pub road_class: Option<String>,
     pub points: Vec<Point>,
     pub connectors: Vec<ConnectorRef>,
 }
@@ -122,6 +124,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
     let mut segments: Vec<Segment> = Vec::new();
     for row in iter {
         let mut primary_name = String::new();
+        let mut road_class: Option<String> = None;
         let mut geometry : Option<Vec<Point>> = None;
         let mut connectors: Option<Vec<ConnectorRef>> = None;
         for column in row?.into_columns() {
@@ -135,8 +138,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
                         }
                     }
                 }
-            } else if column.0 == "geometry"
-            {
+            } else if column.0 == "geometry" {
                 let field : Field = column.1;
                 if let Field::Bytes(byte_array) = field {
                     geometry = Some(process_geometry_vector(byte_array.data()));
@@ -146,12 +148,18 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
                 if let Field::ListInternal(connectorref_list) = field {
                     connectors = Some(process_connector_refs(connectorref_list));
                 }
+            } else if column.0 == "class" {
+                let field : Field = column.1;
+                if let Field::Str(class) = field {
+                    road_class = Some(class.to_string());
+                }            
             }
         }
 
         // TODO: check if we have geometry and connectors before pushing
         segments.push(Segment {
             name: primary_name,
+            road_class,
             points: geometry.unwrap(),
             connectors: connectors.unwrap()
         });
@@ -195,9 +203,17 @@ struct IndexedPoint {
 }
 
 #[derive(Debug)]
+struct Permissions {
+    pedestrian_allowed: bool,
+    auto_allowed: bool,
+}
+
+
+#[derive(Debug)]
 struct ExportedRoad
 {
-    points: Vec<IndexedPoint>
+    points: Vec<IndexedPoint>,
+    permissions: Permissions
 }
 
 fn get_point_for_connector(
@@ -231,10 +247,12 @@ fn get_connector_index_for_point(
 fn process_segment(
     segment: &Segment,
     all_connectors: &[Connector],
-    next_index: &mut usize
+    next_index: &mut usize,
+    permissions: Permissions
 ) -> ExportedRoad {
     let mut exported_road = ExportedRoad {
-        points: Vec::new()
+        points: Vec::new(),
+        permissions
     };
 
     for point in segment.points.iter() {
@@ -268,8 +286,10 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
     for (way_index, exported_road) in exported_roads.iter().enumerate() {
         let node_count = exported_road.points.len() as u16;
         let offset_way_index: u64 = way_index as u64 * 2;
-        ways.push(OsmWay::new(offset_way_index + 1, 1, node_count));
-        ways.push(OsmWay::new(offset_way_index + 2, 1, node_count));
+        let auto_allowed = exported_road.permissions.auto_allowed;
+        let pedestrian_allowed = exported_road.permissions.pedestrian_allowed;
+        ways.push(OsmWay::new(offset_way_index + 1, 1, node_count, auto_allowed, pedestrian_allowed));
+        ways.push(OsmWay::new(offset_way_index + 2, 1, node_count, auto_allowed, pedestrian_allowed));
 
         // Valhalla complains when road is only one way, so for now we export it twice, this is the first time...
         for (point_index, point) in exported_roads[way_index].points.iter().enumerate() {
@@ -307,6 +327,23 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
     Ok(())
 }
 
+fn check_permissions(road_class: &str) -> Permissions {
+    let pedestrian_allowed = !matches!(
+        road_class,
+        "motorway" | "trunk" | "cycleway" | "standard_gauge"
+    );
+
+    let auto_allowed = !matches!(
+        road_class,
+        "null" | "steps" | "path" | "living_street" | "pedestrian" | "footway" | "cycleway" | "standard_gauge"
+    );
+
+    Permissions {
+        pedestrian_allowed,
+        auto_allowed,
+    }
+}
+
 pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std::io::Result<()>
 {
     let segment_path = input_dir.join("segment.parquet");
@@ -316,9 +353,24 @@ pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std
     let mut exported_roads: Vec<ExportedRoad> = Vec::new();
     let mut next_index = 1;
     for (index, segment) in overture_data.segments.iter().enumerate() {
-        println!("Processing segment {} / {}: {}", index + 1, overture_data.segments.len(), segment.name);
+        let road_class: &str = segment.road_class.as_deref().unwrap_or("null");
 
-        exported_roads.push(process_segment(segment, &overture_data.connectors, &mut next_index));
+        info!("Processing segment {} / {}: {} ({})", index + 1, overture_data.segments.len(), segment.name, road_class);
+        let permissions = check_permissions(road_class);
+
+        if !permissions.auto_allowed && !permissions.pedestrian_allowed {
+            info!("- Ignored");
+            continue;
+        } else {
+            if permissions.auto_allowed {
+                info!("- Auto allowed");
+            }
+            if permissions.pedestrian_allowed {
+                info!("- Pedestrian allowed");
+            }
+        }
+
+        exported_roads.push(process_segment(segment, &overture_data.connectors, &mut next_index, permissions));
     }
 
     export_roads(&exported_roads, output_dir)?;

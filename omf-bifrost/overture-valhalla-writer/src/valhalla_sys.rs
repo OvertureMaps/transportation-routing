@@ -64,7 +64,7 @@ impl OsmWay {
         unsafe { std::slice::from_raw_parts(ptr, size) }
     }
 
-    pub fn new(osmid:u64, name_index:u32, nodecount:u16) -> Self
+    pub fn new(osmid:u64, name_index:u32, nodecount:u16, auto_allowed: bool, pedestrian_allowed: bool) -> Self
     {
         let mut way = OsmWay::default();
         way.0.osmwayid_ = osmid;
@@ -86,9 +86,15 @@ impl OsmWay {
         // TODO: Can we leave this 0 for Overture->Valhalla conversion?
         way.0.set_has_user_tags_(0);
 
-        // TODO: Have a second look at this, does this mean pedestrian-only?
-        way.0.set_pedestrian_forward_(1);
-        way.0.set_pedestrian_backward_(1);
+        if pedestrian_allowed {
+            way.0.set_pedestrian_forward_(1);
+            way.0.set_pedestrian_backward_(1);
+        } 
+        if auto_allowed {
+            // TODO: look into one-way streets
+            way.0.set_auto_forward_(1);
+            way.0.set_auto_backward_(1);
+        }
 
         // TODO: get this from Overture data
         way.0.speed_ = 25; // 25 km/h
