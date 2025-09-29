@@ -6,6 +6,11 @@ use parquet::record::List;
 use log::info;
 
 use crate::valhalla_sys::{OsmWay, OsmWayNode};
+use crate::restriction_splitter::split_streets;
+//use crate::overture_types::{AccessRestriction, AccessWhen};
+
+pub use overture_types::{AccessRestriction, AccessWhen};
+
 
 #[derive(Debug, Clone)]
 pub struct Point {
@@ -13,7 +18,7 @@ pub struct Point {
     pub lon: f64
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConnectorRef {
     pub id: String,
     pub at: f64
@@ -25,12 +30,13 @@ pub struct Connector {
     pub coordinate: Point
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Segment {
     pub name: String,
     pub road_class: Option<String>,
     pub points: Vec<Point>,
     pub connectors: Vec<ConnectorRef>,
+    pub access_restrictions: Vec<AccessRestriction>,
 }
 
 #[derive(Debug)]
@@ -115,6 +121,29 @@ fn process_connector_refs(connector_ref_list : List) -> Vec<ConnectorRef>
     connector_refs
 }
 
+fn contains_access_restriction(restrictions: &Vec<AccessRestriction>, between: (f64, f64), when: &AccessWhen) -> bool
+{
+    let sigma = 0.0005;
+
+    for restriction in restrictions {
+        if !restriction.between.is_none() {
+            let r_start = restriction.between.unwrap().0;
+            let r_end = restriction.between.unwrap().1;
+
+            let contains_start = (between.0 + sigma) > r_start;
+            let contains_end = (between.1 - sigma) < r_end;
+
+            let same_when = restriction.when.as_ref().unwrap() == when;
+
+            if contains_start && contains_end && same_when {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::io::Result<Data> {
     let file = File::open(segment_path)?;
     let reader = SerializedFileReader::new(file)?;
@@ -127,6 +156,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
         let mut road_class: Option<String> = None;
         let mut geometry : Option<Vec<Point>> = None;
         let mut connectors: Option<Vec<ConnectorRef>> = None;
+        let mut access_restrictions: Vec<AccessRestriction> = Vec::new();
         for column in row?.into_columns() {
             if column.0 == "names" {
                 if let Field::Group(group) = column.1 {
@@ -153,7 +183,85 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
                 if let Field::Str(class) = field {
                     road_class = Some(class.to_string());
                 }            
+            } else if column.0 == "access_restrictions" {
+                let restrictions = column.1;
+                if let Field::ListInternal(restrictions_list) = restrictions {
+                    for (idx, restriction) in restrictions_list.elements().iter().enumerate() {
+                        if let Field::Group(restriction_group) = restriction {
+                            let mut access_restriction = AccessRestriction {
+                                access_type: String::new(),
+                                when: None,
+                                between: None,
+                            };
+                            let mut should_ignore = false;
+                            for (key, value) in restriction_group.get_column_iter() {
+                                if key == "access_type" {
+                                    if let Field::Str(access_type) = value {
+                                        let access_type_str = access_type.to_string();
+                                        should_ignore = access_type_str == "allowed";
+                                        access_restriction.access_type = access_type_str;
+                                    }
+                                } else if key == "when" {
+                                    if let Field::Group(when_group) = value {
+                                        let mut when = AccessWhen {
+                                            vehicle: None,
+                                            bicycle: None,
+                                            pedestrian: None,
+                                        };
+                                        let mut when_set = false;
+                                        for (when_key, when_value) in when_group.get_column_iter() {
+                                            if when_key == "vehicle" {
+                                                when.vehicle = Some(true);
+                                                when_set = true;
+                                            } else if when_key == "bicycle" {
+                                                when.bicycle = Some(true);
+                                                when_set = true;
+                                            } else if when_key == "pedestrian" {
+                                                when.pedestrian = Some(true);
+                                                when_set = true;
+                                            }
+                                        }
+                                        if when_set {
+                                            access_restriction.when = Some(when);
+                                        }
+                                    }
+                                } else if key == "between" {
+                                    if let Field::ListInternal(between_list) = value {
+                                        if between_list.len() != 2 {
+                                            panic!("expected exactly 2 elements in 'between', got {}", between_list.len());
+                                        }
+                                        let start = if let Field::Double(d) = &between_list.elements()[0] {
+                                            *d
+                                        } else {
+                                            panic!("expected double as first element in 'between'");
+                                        };
+                                        let end = if let Field::Double(d) = &between_list.elements()[1]
+                                        {
+                                            *d
+                                        } else {
+                                            panic!("expected double as second element in 'between'");
+                                        };
+                                        access_restriction.between = Some((start, end));
+                                    }
+                                }
+                            }
+
+                            let has_between = !access_restriction.between.is_none();
+                            let has_when = access_restriction.when.as_ref().is_some();
+                            let mut duplicate_restriction = false;
+                            if has_between && has_when {
+                                // TODO: this works because they are sorted from large to small, should check if this is always the case
+                                duplicate_restriction = contains_access_restriction(&access_restrictions, access_restriction.between.unwrap(), &access_restriction.when.clone().unwrap());
+                            }
+
+                            if has_between && !should_ignore && has_when && !duplicate_restriction {
+                                access_restrictions.push(access_restriction);
+                            }
+                        }
+                    }
+                }
             }
+
         }
 
         // TODO: check if we have geometry and connectors before pushing
@@ -161,7 +269,8 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
             name: primary_name,
             road_class,
             points: geometry.unwrap(),
-            connectors: connectors.unwrap()
+            connectors: connectors.unwrap(),
+            access_restrictions
         });
     }
 
@@ -327,16 +436,55 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
     Ok(())
 }
 
-fn check_permissions(road_class: &str) -> Permissions {
-    let pedestrian_allowed = !matches!(
+fn check_permissions(segment: &Segment) -> Permissions {
+    let road_class = segment.road_class.as_deref().unwrap_or("null");
+    let mut pedestrian_allowed = !matches!(
         road_class,
         "motorway" | "trunk" | "cycleway" | "standard_gauge"
     );
 
-    let auto_allowed = !matches!(
+    let mut auto_allowed = !matches!(
         road_class,
         "null" | "steps" | "path" | "living_street" | "pedestrian" | "footway" | "cycleway" | "standard_gauge"
     );
+
+    if segment.access_restrictions.len() > 1 {
+        panic!("Too many access restrictions on segment: {segment:#?}");
+    }
+
+    if segment.access_restrictions.len() == 0 {
+        return Permissions {
+            pedestrian_allowed,
+            auto_allowed,
+        };
+    }
+
+    let access_restriction = segment.access_restrictions.first().unwrap();
+    if access_restriction.access_type != "denied" && access_restriction.access_type != "designated" {
+        panic!("Unknown access restriction type: {}", access_restriction.access_type);
+    }
+
+    let mut restrictions_set = 0;
+    if let Some(when) = &access_restriction.when {
+        if when.vehicle.is_some() {
+            auto_allowed = false;
+            restrictions_set += 1;
+        }
+        if when.bicycle.is_some() {
+            // TODO: bicycle handling
+            restrictions_set += 1;
+        }
+        if when.pedestrian.is_some() {
+            pedestrian_allowed = false;
+            restrictions_set += 1;
+        }
+    } else {
+        panic!("Access restriction does not have 'when' set: {access_restriction:#?}");
+    }
+
+    if restrictions_set != 1 {
+        panic!("Expected exactly one access restriction to be set, got {restrictions_set}");
+    }
 
     Permissions {
         pedestrian_allowed,
@@ -348,7 +496,9 @@ pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std
 {
     let segment_path = input_dir.join("segment.parquet");
     let connector_path = input_dir.join("connector.parquet");
-    let overture_data = import_overture_data(&segment_path, &connector_path)?;
+    let mut overture_data = import_overture_data(&segment_path, &connector_path)?;
+
+    split_streets(&mut overture_data);
 
     let mut exported_roads: Vec<ExportedRoad> = Vec::new();
     let mut next_index = 1;
@@ -356,7 +506,7 @@ pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std
         let road_class: &str = segment.road_class.as_deref().unwrap_or("null");
 
         info!("Processing segment {} / {}: {} ({})", index + 1, overture_data.segments.len(), segment.name, road_class);
-        let permissions = check_permissions(road_class);
+        let permissions = check_permissions(segment);
 
         if !permissions.auto_allowed && !permissions.pedestrian_allowed {
             info!("- Ignored");

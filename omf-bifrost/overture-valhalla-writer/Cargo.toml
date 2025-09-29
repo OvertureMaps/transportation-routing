@@ -16,6 +16,9 @@ geozero.workspace = true
 geo-types.workspace = true
 log.workspace = true
 
+# Local workspace crates
+overture-types = { path = "../overture-types" }
+
 [build-dependencies]
 bindgen.workspace = true
 
