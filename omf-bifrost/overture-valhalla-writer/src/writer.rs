@@ -1,42 +1,24 @@
 use std::fs::{write, File};
+use overture_types::properties;
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use std::path::Path;
 use parquet::record::Field;
 use parquet::record::List;
 use log::info;
+use geo_types::{LineString, Point, Coord};
+
 
 use crate::valhalla_sys::{OsmWay, OsmWayNode};
-use crate::restriction_splitter::split_streets;
-//use crate::overture_types::{AccessRestriction, AccessWhen};
+use overture_access_restriction_splitter::restriction_splitter::split_segments;
 
 pub use overture_types::{AccessRestriction, AccessWhen};
-
-
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub lat: f64,
-    pub lon: f64
-}
-
-#[derive(Debug, Clone)]
-pub struct ConnectorRef {
-    pub id: String,
-    pub at: f64
-}
+use overture_types::ConnectorRef;
+use overture_types::Segment;
 
 #[derive(Debug)]
 pub struct Connector {
     pub id: String,
-    pub coordinate: Point
-}
-
-#[derive(Debug, Clone)]
-pub struct Segment {
-    pub name: String,
-    pub road_class: Option<String>,
-    pub points: Vec<Point>,
-    pub connectors: Vec<ConnectorRef>,
-    pub access_restrictions: Vec<AccessRestriction>,
+    pub coordinate: Point<f64>
 }
 
 #[derive(Debug)]
@@ -45,7 +27,7 @@ pub struct Data {
     pub connectors: Vec<Connector>,
 }
 
-fn parse_point_wkb(wkb_data: &[u8]) -> Point {
+fn parse_point_wkb(wkb_data: &[u8]) -> Point<f64> {
     use geozero::wkb::Wkb;
     use geozero::ToGeo;
     use geo_types::Geometry;
@@ -55,10 +37,7 @@ fn parse_point_wkb(wkb_data: &[u8]) -> Point {
     
     match geometry {
         Geometry::Point(point) => {
-            Point {
-                lat: point.y(),
-                lon: point.x()
-            }
+            Point::new(point.x(), point.y())
         }
         _ => {
             panic!("Expected WKB to represent a Point");
@@ -66,7 +45,7 @@ fn parse_point_wkb(wkb_data: &[u8]) -> Point {
     }
 }
 
-fn process_geometry_vector(wkb_data: &[u8]) -> Vec<Point> {
+fn process_geometry_vector(wkb_data: &[u8]) -> LineString<f64> {
     use geozero::wkb::Wkb;
     use geozero::ToGeo;
     use geo_types::Geometry;
@@ -76,13 +55,10 @@ fn process_geometry_vector(wkb_data: &[u8]) -> Vec<Point> {
     
     match geometry {
         Geometry::LineString(line) => {
-            let mut output : Vec<Point> = Vec::new();
+            let mut output = LineString::new(vec![]);
             for point in line.points() {
-                let added_point = Point {
-                    lat: point.y(),
-                    lon: point.x()
-                };
-                output.push(added_point);
+                let added_coord = Coord { x: point.x(), y: point.y() };
+                output.0.push(added_coord);
             }
             output
         }
@@ -91,7 +67,6 @@ fn process_geometry_vector(wkb_data: &[u8]) -> Vec<Point> {
         }   
     }
 }
-
 
 fn process_connector_refs(connector_ref_list : List) -> Vec<ConnectorRef>
 {
@@ -126,7 +101,7 @@ fn contains_access_restriction(restrictions: &Vec<AccessRestriction>, between: (
     let sigma = 0.0005;
 
     for restriction in restrictions {
-        if !restriction.between.is_none() {
+        if restriction.between.is_some() {
             let r_start = restriction.between.unwrap().0;
             let r_end = restriction.between.unwrap().1;
 
@@ -154,7 +129,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
     for row in iter {
         let mut primary_name = String::new();
         let mut road_class: Option<String> = None;
-        let mut geometry : Option<Vec<Point>> = None;
+        let mut geometry : LineString<f64> = LineString::new(vec![]);
         let mut connectors: Option<Vec<ConnectorRef>> = None;
         let mut access_restrictions: Vec<AccessRestriction> = Vec::new();
         for column in row?.into_columns() {
@@ -171,7 +146,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
             } else if column.0 == "geometry" {
                 let field : Field = column.1;
                 if let Field::Bytes(byte_array) = field {
-                    geometry = Some(process_geometry_vector(byte_array.data()));
+                    geometry = process_geometry_vector(byte_array.data());
                 }
             } else if column.0 == "connectors" {
                 let field : Field = column.1;
@@ -186,7 +161,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
             } else if column.0 == "access_restrictions" {
                 let restrictions = column.1;
                 if let Field::ListInternal(restrictions_list) = restrictions {
-                    for (idx, restriction) in restrictions_list.elements().iter().enumerate() {
+                    for restriction in restrictions_list.elements().iter() {
                         if let Field::Group(restriction_group) = restriction {
                             let mut access_restriction = AccessRestriction {
                                 access_type: String::new(),
@@ -209,7 +184,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
                                             pedestrian: None,
                                         };
                                         let mut when_set = false;
-                                        for (when_key, when_value) in when_group.get_column_iter() {
+                                        for (when_key, _) in when_group.get_column_iter() {
                                             if when_key == "vehicle" {
                                                 when.vehicle = Some(true);
                                                 when_set = true;
@@ -246,7 +221,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
                                 }
                             }
 
-                            let has_between = !access_restriction.between.is_none();
+                            let has_between = access_restriction.between.is_some();
                             let has_when = access_restriction.when.as_ref().is_some();
                             let mut duplicate_restriction = false;
                             if has_between && has_when {
@@ -264,13 +239,26 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
 
         }
 
+        let names = properties::Names {
+            primary: Some(primary_name.clone()),
+            alternative: None,
+        };
+
         // TODO: check if we have geometry and connectors before pushing
+        let properties = properties::SegmentProperties {
+            class: road_class.clone(),
+            names: Some(names),
+            access_restrictions: Some(access_restrictions),
+            speed_limits: None,
+            subtype: None,
+            surface: None,
+        };
+
         segments.push(Segment {
-            name: primary_name,
-            road_class,
-            points: geometry.unwrap(),
+            id: primary_name,
+            geometry,
             connectors: connectors.unwrap(),
-            access_restrictions
+            properties
         });
     }
 
@@ -282,7 +270,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
     let mut connectors: Vec<Connector> = Vec::new();
     for row in iter {
         let mut id = String::new();
-        let mut coordinate: Option<Point> = None;
+        let mut coordinate: Option<Point<f64>> = None;
         for column in row?.into_columns() {
             if column.0 == "id" {
                 if let Field::Str(id_str) = column.1 {
@@ -294,7 +282,6 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
                 }
             }
         }
-
 
         connectors.push(Connector {
             id,
@@ -308,7 +295,7 @@ pub fn import_overture_data(segment_path: &Path, connector_path: &Path) -> std::
 #[derive(Debug)]
 struct IndexedPoint {
     index: usize,
-    point: Point
+    point: Point<f64>
 }
 
 #[derive(Debug)]
@@ -328,14 +315,14 @@ struct ExportedRoad
 fn get_point_for_connector(
     connector_ref: &ConnectorRef,
     all_connectors: &[Connector]
-) -> Option<Point> {
+) -> Option<Point<f64>> {
     all_connectors.iter()
         .find(|c| c.id == connector_ref.id)
-        .map(|c| c.coordinate.clone())
+        .map(|c| c.coordinate)
 }
 
 fn get_connector_index_for_point(
-    point: &Point,
+    point: &Coord<f64>,
     connector_refs: &[ConnectorRef],
     all_connectors: &[Connector]
 ) -> Option<usize>{
@@ -343,8 +330,8 @@ fn get_connector_index_for_point(
         let connector_point = get_point_for_connector(connector_ref, all_connectors);
         if connector_point.is_some() {
             let connector_point = connector_point.unwrap();
-            if (point.lat - connector_point.lat).abs() < 1e-6 &&
-               (point.lon - connector_point.lon).abs() < 1e-6 {
+            if (point.y - connector_point.y()).abs() < 1e-6 &&
+               (point.x - connector_point.x()).abs() < 1e-6 {
                 return Some(connector_ref_index);
             }
         }
@@ -364,7 +351,7 @@ fn process_segment(
         permissions
     };
 
-    for point in segment.points.iter() {
+    for point in segment.geometry.0.iter() {
         let connector_index = get_connector_index_for_point(point, &segment.connectors, all_connectors);
         if connector_index.is_some() {
             let connector_ref = &segment.connectors[connector_index.unwrap()];
@@ -373,13 +360,13 @@ fn process_segment(
                 .expect("Connector not found in all connectors");
             exported_road.points.push(IndexedPoint {
                 index: connector_osm_index,
-                point: point.clone()
+                point: Point::new(point.x, point.y)
             });
         } else {
             // If no connector found, just use the point itself
             exported_road.points.push(IndexedPoint {
                 index: *next_index,
-                point: point.clone()
+                point: Point::new(point.x, point.y)
             });
             *next_index += 1;
         }
@@ -409,8 +396,8 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
                 offset_way_index as u32,
                 point_index as u32,
                 point.index as u64,
-                point.point.lon,
-                point.point.lat,
+                point.point.x(),
+                point.point.y(),
                 intersection as u32,
             ));
         }
@@ -424,8 +411,8 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
                 offset_way_index as u32,
                 point_index as u32,
                 point.index as u64,
-                point.point.lon,
-                point.point.lat,
+                point.point.x(),
+                point.point.y(),
                 intersection as u32,
             ));
         }
@@ -437,7 +424,7 @@ fn export_roads(exported_roads: &[ExportedRoad], output_dir: &Path) -> std::io::
 }
 
 fn check_permissions(segment: &Segment) -> Permissions {
-    let road_class = segment.road_class.as_deref().unwrap_or("null");
+    let road_class = segment.properties.class.as_deref().unwrap_or("null");
     let mut pedestrian_allowed = !matches!(
         road_class,
         "motorway" | "trunk" | "cycleway" | "standard_gauge"
@@ -448,18 +435,18 @@ fn check_permissions(segment: &Segment) -> Permissions {
         "null" | "steps" | "path" | "living_street" | "pedestrian" | "footway" | "cycleway" | "standard_gauge"
     );
 
-    if segment.access_restrictions.len() > 1 {
+    if segment.properties.access_restrictions.as_ref().unwrap().len() > 1 {
         panic!("Too many access restrictions on segment: {segment:#?}");
     }
 
-    if segment.access_restrictions.len() == 0 {
+    if segment.properties.access_restrictions.as_ref().unwrap().is_empty() {
         return Permissions {
             pedestrian_allowed,
             auto_allowed,
         };
     }
 
-    let access_restriction = segment.access_restrictions.first().unwrap();
+    let access_restriction = segment.properties.access_restrictions.as_ref().unwrap().first().unwrap();
     if access_restriction.access_type != "denied" && access_restriction.access_type != "designated" {
         panic!("Unknown access restriction type: {}", access_restriction.access_type);
     }
@@ -498,14 +485,14 @@ pub fn convert_overture_to_valhalla(input_dir : &Path, output_dir: &Path) -> std
     let connector_path = input_dir.join("connector.parquet");
     let mut overture_data = import_overture_data(&segment_path, &connector_path)?;
 
-    split_streets(&mut overture_data);
+    split_segments(&mut overture_data.segments);
 
     let mut exported_roads: Vec<ExportedRoad> = Vec::new();
     let mut next_index = 1;
     for (index, segment) in overture_data.segments.iter().enumerate() {
-        let road_class: &str = segment.road_class.as_deref().unwrap_or("null");
+        let road_class: &str = segment.properties.class.as_deref().unwrap_or("null");
 
-        info!("Processing segment {} / {}: {} ({})", index + 1, overture_data.segments.len(), segment.name, road_class);
+        info!("Processing segment {} / {}: {} ({})", index + 1, overture_data.segments.len(), segment.id, road_class);
         let permissions = check_permissions(segment);
 
         if !permissions.auto_allowed && !permissions.pedestrian_allowed {

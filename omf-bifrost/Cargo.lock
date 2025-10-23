@@ -1651,6 +1651,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "overture-access-restriction-splitter"
+version = "0.1.0"
+dependencies = [
+ "geo-types",
+ "geozero",
+ "log",
+ "overture-types",
+ "parquet",
+]
+
+[[package]]
 name = "overture-bifrost"
 version = "0.1.0"
 dependencies = [
@@ -1703,6 +1714,7 @@ dependencies = [
  "geo-types",
  "geozero",
  "log",
+ "overture-access-restriction-splitter",
  "overture-types",
  "parquet",
 ]
