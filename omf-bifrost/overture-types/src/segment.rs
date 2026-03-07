@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use geo::LineString;
 
+use crate::connector::ConnectorRef;
+
 /// An Overture Maps transportation segment
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Segment {
@@ -14,4 +16,7 @@ pub struct Segment {
     
     /// Properties associated with the segment
     pub properties: crate::properties::SegmentProperties,
+
+    /// References to connectors to other segments
+    pub connectors: Vec<ConnectorRef>,
 }
