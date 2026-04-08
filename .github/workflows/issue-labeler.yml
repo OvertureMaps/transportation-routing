@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read  # Required for checkout to read issue templates
       issues: write  # Required to add labels to issues
 
     concurrency:
@@ -53,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read  # Required for checkout to read issue templates
       issues: write  # Required to add labels to issues
 
     concurrency:
@@ -85,6 +87,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read  # Required for checkout to read issue templates
       issues: write  # Required to add labels to issues
 
     concurrency:
