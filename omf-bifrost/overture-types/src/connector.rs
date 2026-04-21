@@ -15,3 +15,11 @@ pub struct Connector {
     /// Properties associated with the connector
     pub properties: crate::properties::ConnectorProperties,
 }
+
+/// Reference to a Connector by ID and position along a segment
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConnectorRef {
+    pub id: String,
+    pub at: f64
+}
+

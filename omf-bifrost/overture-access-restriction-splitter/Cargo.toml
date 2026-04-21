@@ -1,13 +1,13 @@
 [package]
-name = "overture-valhalla-writer"
+name = "overture-access-restriction-splitter"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Library for converting Overture map data to Valhalla binary format"
+description = "Library for splitting Overture arcs on access restrictions"
 keywords.workspace = true
-categories = ["overture", "map", "routing", "valhalla"]
+categories = ["overture", "map", "routing"]
 
 [dependencies]
 # Workspace dependencies
@@ -18,8 +18,4 @@ log.workspace = true
 
 # Local workspace crates
 overture-types = { path = "../overture-types" }
-overture-access-restriction-splitter = { path = "../overture-access-restriction-splitter" }
-
-[build-dependencies]
-bindgen.workspace = true
 
