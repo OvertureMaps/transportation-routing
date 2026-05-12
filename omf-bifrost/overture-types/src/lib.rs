@@ -12,4 +12,5 @@ pub mod properties;
 
 pub use segment::Segment;
 pub use connector::Connector;
+pub use connector::ConnectorRef;
 pub use properties::*;
