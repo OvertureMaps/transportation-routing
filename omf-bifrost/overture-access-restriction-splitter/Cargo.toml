@@ -1,0 +1,21 @@
+[package]
+name = "overture-access-restriction-splitter"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Library for splitting Overture arcs on access restrictions"
+keywords.workspace = true
+categories = ["overture", "map", "routing"]
+
+[dependencies]
+# Workspace dependencies
+parquet.workspace = true
+geozero.workspace = true
+geo-types.workspace = true
+log.workspace = true
+
+# Local workspace crates
+overture-types = { path = "../overture-types" }
+

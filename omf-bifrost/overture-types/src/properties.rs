@@ -52,10 +52,13 @@ pub struct AccessRestriction {
     
     /// When this restriction applies
     pub when: Option<AccessWhen>,
+
+    // Between which LR offsets it applies
+    pub between: Option<(f64, f64)>,
 }
 
 /// When an access restriction applies
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct AccessWhen {
     /// Vehicle access
     pub vehicle: Option<bool>,

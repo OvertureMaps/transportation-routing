@@ -16,6 +16,10 @@ geozero.workspace = true
 geo-types.workspace = true
 log.workspace = true
 
+# Local workspace crates
+overture-types = { path = "../overture-types" }
+overture-access-restriction-splitter = { path = "../overture-access-restriction-splitter" }
+
 [build-dependencies]
 bindgen.workspace = true
 
