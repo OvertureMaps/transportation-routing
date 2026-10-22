@@ -14,14 +14,15 @@ RUN ARCH=$(dpkg --print-architecture) && \
     rm -r duckdb libduckdb.zip
 
 FROM base AS builder
-RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y build-essential libclang-dev && rm -rf /var/lib/apt/lists/*
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+ENV LIBRARY_PATH="/usr/local/lib"
 WORKDIR /app
 COPY . /app
 RUN cargo build --release
 
 FROM base AS runtime
 WORKDIR /run
-COPY --from=builder /app/target/release/omf-bifrost /usr/local/bin/omf-bifrost
+COPY --from=builder /app/target/release/overture-bifrost /usr/local/bin/omf-bifrost
 ENTRYPOINT ["/usr/local/bin/omf-bifrost"]
