@@ -1,5 +1,5 @@
-FROM debian:bullseye-slim AS base
-RUN apt-get update && apt-get install -y curl unzip libsqlite3-dev libsqlite3-mod-spatialite && rm -rf /var/lib/apt/lists/*
+FROM debian:trixie-slim AS base
+RUN apt-get update && apt-get install -y ca-certificates curl unzip libsqlite3-dev libsqlite3-mod-spatialite && rm -rf /var/lib/apt/lists/*
 
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ]; then \
